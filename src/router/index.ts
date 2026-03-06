@@ -9,11 +9,6 @@ const routes = [
     component: DashboardView 
   },
   { 
-    path: '/notas', 
-    name: 'Notas',
-    component: DashboardView  // Mesma tela do Dashboard
-  },
-  { 
     path: '/configuracoes', 
     name: 'Configurações',
     component: SettingsView 

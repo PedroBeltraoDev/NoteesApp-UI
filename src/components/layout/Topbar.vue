@@ -4,7 +4,6 @@
       <h1 class="logo" @click="$router.push('/')">NoteesApp</h1>
       <nav class="nav-menu">
         <router-link to="/" class="nav-item" active-class="active">Início</router-link>
-        <router-link to="/notas" class="nav-item" active-class="active">Notas</router-link>
         <router-link to="/configuracoes" class="nav-item" active-class="active">Configurações</router-link>
       </nav>
     </div>
@@ -23,7 +22,7 @@
         />
       </div>
       
-      <button class="btn-new-note" @click="$emit('createNote')">
+      <button v-if="$route.path === '/'" class="btn-new-note" @click="$emit('createNote')">
         Nova Nota +
       </button>
     </div>
