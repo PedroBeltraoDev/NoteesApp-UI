@@ -15,7 +15,7 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/notes?${params}`)
     const result: ApiResponse<any[]> = await res.json()
     return result.success ? result.data : []
-  }, 
+  },
   
   async getFolders() {
     const res = await fetch(`${API_BASE_URL}/notes/folders`)
@@ -56,4 +56,4 @@ export const api = {
     const result: ApiResponse<any> = await res.json()
     return result.success
   }
-}  
+}
