@@ -36,7 +36,8 @@
         <div class="form-row">
           <div class="form-group">
             <label>Pasta (opcional)</label>
-            <select v-model="note.folder">
+            <select v-model="localFolder">  
+              <option value="">Nenhuma</option>
               <option value="Projetos">Projetos</option>
               <option value="Pessoal">Pessoal</option>
               <option value="Aprendendo">Aprendendo</option>
@@ -92,12 +93,12 @@ watch(() => props.note, (newNote: any) => {
   if (newNote) {
     localTitle.value = newNote.title ?? ''
     localContent.value = newNote.content ?? ''
-    localFolder.value = newNote.folder ?? ''
+    localFolder.value = newNote.folder ?? ''  
     localTags.value = newNote.tags?.join(', ') ?? ''
   } else {
     localTitle.value = ''
     localContent.value = ''
-    localFolder.value = ''
+    localFolder.value = ''  
     localTags.value = ''
   }
   errors.value = { title: '', content: '' }
@@ -148,16 +149,16 @@ const handleSubmit = () => {
     .filter(tag => tag.length > 0)
   
   const noteData: any = {
-  title: localTitle.value.trim(),
-  content: localContent.value.trim(),
-  tags: tagsArray,
-  folder: localFolder.value || null
-}
-
-if (isEditing.value && props.note) {
-  noteData.id = props.note.id  
-  noteData.createdAt = props.note.createdAt  
-}
+    title: localTitle.value.trim(),
+    content: localContent.value.trim(),
+    tags: tagsArray,
+    folder: localFolder.value || null  
+  }
+  
+  if (isEditing.value && props.note) {
+    noteData.id = props.note.id  
+    noteData.createdAt = props.note.createdAt  
+  }
   
   emit('saved', noteData)
 }
