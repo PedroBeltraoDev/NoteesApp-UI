@@ -88,10 +88,11 @@ import Topbar from '../components/layout/Topbar.vue'
 import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
-
-const API_BASE_URL = 'https://noteesapp-be.onrender.com/api'
+import { api } from '@/services/api'
 
 const notes = ref<any[]>([])
+const folders = ref<string[]>([])
+const tags = ref<string[]>([])
 const isLoading = ref(true)
 const isModalOpen = ref(false)
 const editingNote = ref<any>(null)
@@ -138,24 +139,14 @@ const sortedNotes = computed(() => {
   return sorted
 })
 
-const fetchNotes = async (folder: string | null = null, tag: string | null = null) => {
+const loadNotes = async () => {
   try {
     isLoading.value = true
-    let url = `${API_BASE_URL}/notes`
-    
-    const params = new URLSearchParams()
-    if (folder) params.append('folder', folder)
-    if (tag) params.append('tag', tag)
-    
-    if (params.toString()) {
-      url += `?${params.toString()}`
-    }
-    
-    const response = await fetch(url)
-    if (!response.ok) throw new Error('Falha ao buscar notas')
-    
-    notes.value = await response.json()
-  } catch (error: any) {
+    notes.value = await api.getNotes(
+      selectedFolder.value ?? undefined, 
+      selectedTag.value ?? undefined
+)
+  } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
   } finally {
@@ -163,8 +154,26 @@ const fetchNotes = async (folder: string | null = null, tag: string | null = nul
   }
 }
 
+const loadFolders = async () => {
+  try {
+    folders.value = await api.getFolders()
+  } catch (error) {
+    console.error('Erro ao buscar pastas:', error)
+  }
+}
+
+const loadTags = async () => {
+  try {
+    tags.value = await api.getTags()
+  } catch (error) {
+    console.error('Erro ao buscar tags:', error)
+  }
+}
+
 onMounted(() => {
-  fetchNotes()
+  loadNotes()
+  loadFolders()
+  loadTags()
 })
 
 const setSort = (sortType: string) => {
@@ -174,19 +183,19 @@ const setSort = (sortType: string) => {
 const selectFolder = (folder: string) => {
   selectedFolder.value = folder
   selectedTag.value = null
-  fetchNotes(folder, null)
+  loadNotes()
 }
 
 const selectTag = (tag: string) => {
   selectedTag.value = tag
   selectedFolder.value = null
-  fetchNotes(null, tag)
+  loadNotes()
 }
 
 const clearFilters = () => {
   selectedFolder.value = null
   selectedTag.value = null
-  fetchNotes()
+  loadNotes()
 }
 
 const handleCreateNote = () => {
@@ -202,11 +211,8 @@ const handleEditNote = (note: any) => {
 const handleDeleteNote = async (id: number) => {
   if (confirm('Tem certeza que deseja excluir esta nota?')) {
     try {
-      const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Falha ao excluir nota')
-      await fetchNotes(selectedFolder.value, selectedTag.value)
+      await api.deleteNote(id)
+      await loadNotes()
     } catch (error: any) {
       console.error('Erro ao excluir nota:', error)
       alert('Erro ao excluir nota')
@@ -218,13 +224,8 @@ const handleTogglePin = async (id: number) => {
   const note = notes.value.find(n => n.id === id)
   if (note) {
     try {
-      const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...note, isPinned: !note.isPinned })
-      })
-      if (!response.ok) throw new Error('Falha ao atualizar nota')
-      await fetchNotes(selectedFolder.value, selectedTag.value)
+      await api.updateNote({ ...note, isPinned: !note.isPinned })
+      await loadNotes()
     } catch (error: any) {
       console.error('Erro ao atualizar nota:', error)
     }
@@ -233,24 +234,13 @@ const handleTogglePin = async (id: number) => {
 
 const saveNote = async (noteData: any) => {
   try {
-    const url = editingNote.value 
-      ? `${API_BASE_URL}/notes/${editingNote.value.id}`
-      : `${API_BASE_URL}/notes`
-    
-    const method = editingNote.value ? 'PUT' : 'POST'
-    
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(noteData)
-    })
-    
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Erro ao salvar nota')
+    if (editingNote.value) {
+      await api.updateNote({ ...noteData, id: editingNote.value.id })
+    } else {
+      await api.createNote(noteData)
     }
     
-    await fetchNotes(selectedFolder.value, selectedTag.value)
+    await loadNotes()
     closeModal()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
@@ -261,16 +251,13 @@ const saveNote = async (noteData: any) => {
 const handleSearch = (query: string) => {
   searchQuery.value = query
   if (query.trim() === '') {
-    fetchNotes(selectedFolder.value, selectedTag.value)
+    loadNotes()
   } else {
-    fetch(`${API_BASE_URL}/notes/search?query=${encodeURIComponent(query)}`)
-      .then(res => res.json())
-      .then(filtered => {
-        notes.value = filtered
-      })
-      .catch((error: any) => {
-        console.error('Erro na busca:', error)
-      })
+    const filtered = notes.value.filter(n => 
+      n.title.toLowerCase().includes(query.toLowerCase()) ||
+      n.content.toLowerCase().includes(query.toLowerCase())
+    )
+    notes.value = filtered
   }
 }
 
