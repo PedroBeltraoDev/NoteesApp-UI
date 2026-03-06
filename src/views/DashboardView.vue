@@ -12,7 +12,6 @@
         @selectFolder="selectFolder" 
         @selectTag="selectTag"
         @clearFilters="clearFilters"
-        v-model:mobileOpen="isMobileMenuOpen"
       />
       
       <main class="content">
@@ -89,13 +88,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import Topbar from '../components/layout/Topbar.vue'
 import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 import { api } from '@/services/api'
 
+// DECLARAÇÕES
 const notes = ref<any[]>([])
 const folders = ref<string[]>([])
 const tags = ref<string[]>([])
@@ -106,7 +106,9 @@ const searchQuery = ref('')
 const selectedFolder = ref<string | null>(null)
 const selectedTag = ref<string | null>(null)
 const currentSort = ref('all')
+const sidebarRef = ref<any>(null)
 
+// COMPUTED
 const activeFilter = computed(() => {
   if (selectedFolder.value) return `Pasta: ${selectedFolder.value}`
   if (selectedTag.value) return `Tag: ${selectedTag.value}`
@@ -145,13 +147,14 @@ const sortedNotes = computed(() => {
   return sorted
 })
 
+// FUNÇÕES DE CARREGAMENTO
 const loadNotes = async () => {
   try {
     isLoading.value = true
     notes.value = await api.getNotes(
       selectedFolder.value ?? undefined, 
       selectedTag.value ?? undefined
-)
+    )
   } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
@@ -176,12 +179,7 @@ const loadTags = async () => {
   }
 }
 
-onMounted(() => {
-  loadNotes()
-  loadFolders()
-  loadTags()
-})
-
+// FUNÇÕES DE AÇÃO
 const setSort = (sortType: string) => {
   currentSort.value = sortType
 }
@@ -271,22 +269,21 @@ const closeModal = () => {
   isModalOpen.value = false
   editingNote.value = null
 }
-const sidebarRef = ref<any>(null)
-const isMobileMenuOpen = ref(false)
 
 const handleToggleMobileMenu = () => {
-  if (sidebarRef.value) {
+  if (sidebarRef.value?.openMenu) {
     sidebarRef.value.openMenu()
   }
 }
 
-onMounted(() => {
+// LIFECYCLE
+onMounted(async () => {
+  await Promise.all([loadNotes(), loadFolders(), loadTags()])
   window.addEventListener('toggle-mobile-menu', handleToggleMobileMenu)
-  
-  // Cleanup
-  return () => {
-    window.removeEventListener('toggle-mobile-menu', handleToggleMobileMenu)
-  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('toggle-mobile-menu', handleToggleMobileMenu)
 })
 </script>
 
