@@ -1,42 +1,132 @@
-# notis-app
+# 📝 NoteesApp - Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+> Interface moderna e responsiva para gerenciamento de notas, desenvolvida com Vue.js 3 e TypeScript.
 
-## Recommended IDE Setup
+<p align="center">
+  <img src="https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vue.js&logoColor=white" alt="Vue.js">
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+</p>
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+---
 
-## Recommended Browser Setup
+## 📖 Sobre
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+O **NoteesApp Frontend** é a interface do usuário do sistema de gerenciamento de notas NoteesApp. Desenvolvido com Vue.js 3 e TypeScript, oferece uma experiência fluida, responsiva e intuitiva para criar, organizar e buscar suas notas com facilidade.
 
-## Type Support for `.vue` Imports in TS
+### ✨ Destaques
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+| Recurso | Descrição |
+|---------|-----------|
+| 🎨 **Temas** | Alternância entre tema claro e escuro com persistência |
+| 📁 **Organização** | Notas agrupadas por pastas e tags personalizáveis |
+| 🔍 **Busca** | Pesquisa em tempo real no título e conteúdo das notas |
+| 📌 **Fixação** | Destaque para notas importantes no topo da lista |
+| 📱 **Responsivo** | Layout adaptável para desktop, tablet e mobile |
+| ⌨️ **Acessível** | Navegação por teclado e contraste adequado |
+| ⚡ **Performático** | Carregamento rápido com Vite e code splitting |
 
-## Customize configuration
+---
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## 🚀 Tecnologias
 
-## Project Setup
+- **Vue.js 3** (Composition API)
+- **Vue Router 4**
+- **TypeScript 5.x**
+- **Vite 5.x**
+- **ESLint + Prettier**
+- **CSS3 com Variáveis CSS**
+- **Fetch API nativa**
 
+---
+
+## 📋 Pré-requisitos
+
+- **Node.js** 18.x ou superior
+- **npm** 9.x ou superior
+- **Git** instalado
+
+---
+
+## 🔧 Instalação
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/PedroBeltraoDev/NotisApp-FE.git
+cd NotisApp-FE
+```
+
+2.Instale as dependências:
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+3.Configure a API em .env:
+```sh
+VITE_API_BASE_URL=http://localhost:5216/api
+```
 
+4.Inicie o servidor de desenvolvimento:
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+O aplicativo estará disponível em: http://localhost:5173
 
-```sh
-npm run build
+✨ Funcionalidades
+```bash
+✅ Criar, editar e excluir notas
+✅ Buscar notas por texto
+✅ Filtrar por pastas e tags
+✅ Fixar notas importantes
+✅ Tema claro e escuro
+✅ Interface responsiva
+✅ Limite de 1000 caracteres por nota
+✅ Visualização completa da nota ao clicar
+✅ Ordenação por data, recentes e tags
 ```
+
+🗂️ Estrutura do Projeto
+```bash
+notis-app/
+├── public/              # Arquivos estáticos
+├── src/
+│   ├── components/      # Componentes Vue
+│   │   ├── layout/      # Topbar, Sidebar
+│   │   └── notes/       # NoteCard, NoteFormModal
+│   ├── router/          # Configuração de rotas
+│   ├── views/           # Páginas (Dashboard, Settings)
+│   ├── App.vue          # Componente principal
+│   └── main.ts          # Ponto de entrada
+├── .env                 # Variáveis de ambiente
+├── vite.config.ts       # Configuração Vite
+└── package.json         # Dependências
+```
+
+📦 Comandos Disponíveis
+```sh
+npm run dev        -> Inicia servidor de desenvolvimento
+
+npm run build      -> Build para produção
+
+npm run preview    -> Preview da build de produção
+
+npm run lint       -> Verifica código com ESLint
+```
+
+## 🎯 Roadmap
+
+- Autenticação de usuários
+- Sincronização em tempo real (WebSocket)
+- Exportar notas como PDF
+- Compartilhamento de notas via link
+- Upload de imagens nas notas
+- Tags com cores personalizadas
+- Arquivamento de notas
+
+## 👨‍💻 Autor
+
+Pedro Beltrão
+
+- GitHub: @PedroBeltraoDev
