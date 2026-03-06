@@ -11,11 +11,11 @@ export const api = {
     const params = new URLSearchParams()
     if (folder) params.append('folder', folder)
     if (tag) params.append('tag', tag)
-  
+    
     const res = await fetch(`${API_BASE_URL}/notes?${params}`)
     const result: ApiResponse<any[]> = await res.json()
     return result.success ? result.data : []
-},
+  }, 
   
   async getFolders() {
     const res = await fetch(`${API_BASE_URL}/notes/folders`)
@@ -36,7 +36,7 @@ export const api = {
       body: JSON.stringify(note)
     })
     const result: ApiResponse<any> = await res.json()
-    return result
+    return result.success ? result.data : result
   },
   
   async updateNote(note: any) {
@@ -46,7 +46,7 @@ export const api = {
       body: JSON.stringify(note)
     })
     const result: ApiResponse<any> = await res.json()
-    return result
+    return result.success ? result.data : result
   },
   
   async deleteNote(id: number) {
@@ -54,6 +54,6 @@ export const api = {
       method: 'DELETE'
     })
     const result: ApiResponse<any> = await res.json()
-    return result
+    return result.success
   }
-}
+}  
