@@ -1,3 +1,17 @@
+# 📝 Sobre o NoteesApp
+
+O **NoteesApp** é um sistema completo de gerenciamento de notas desenvolvido com arquitetura moderna e escalável. Com uma interface intuitiva e recursos poderosos, ele permite que você organize suas ideias, projetos e lembretes de forma simples e eficiente.
+
+## ✨ Destaques
+
+- 🎨 **Interface moderna** com temas claro e escuro
+- 📁 **Organização inteligente** por pastas e tags
+- 🔍 **Busca rápida** em todo o conteúdo das notas
+- 📌 **Fixação de notas** importantes no topo
+- 📱 **Totalmente responsivo** para desktop e mobile
+- 🔐 **API RESTful** segura e documentada com Swagger
+- ⚡ **Performance otimizada** com Vue.js 3 e .NET 8
+---
 # 📝 NoteesApp - Frontend
 
 Interface moderna e responsiva para o aplicativo de notas NoteesApp, desenvolvida com Vue.js 3 e TypeScript.
