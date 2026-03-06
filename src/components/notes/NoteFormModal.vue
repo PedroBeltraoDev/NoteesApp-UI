@@ -36,13 +36,12 @@
         <div class="form-row">
           <div class="form-group">
             <label>Pasta (opcional)</label>
-            <select v-model="localFolder" class="select-field">
-              <option value="">Nenhuma</option>
-              <option value="Projects">Projetos</option>
-              <option value="Personal">Pessoal</option>
-              <option value="Learning">Aprendizado</option>
-              <option value="Travel">Viagens</option>
-              <option value="Archives">Arquivos</option>
+            <select v-model="note.folder">
+              <option value="Projetos">Projetos</option>
+              <option value="Pessoal">Pessoal</option>
+              <option value="Aprendendo">Aprendendo</option>
+              <option value="Viagem">Viagem</option>
+              <option value="Arquivos">Arquivos</option>
             </select>
           </div>
           
