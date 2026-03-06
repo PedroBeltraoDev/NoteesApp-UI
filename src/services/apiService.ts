@@ -1,6 +1,6 @@
 import type { Note } from '../types/Note'
 
-const API_BASE_URL = 'http://localhost:5216/api'
+const API_BASE_URL = 'https://noteesapp-be.onrender.com/api'
 
 export const apiService = {
   // GET all notes

@@ -68,8 +68,8 @@ const selectTag = (tag: string) => {
 onMounted(async () => {
   try {
     const [foldersRes, tagsRes] = await Promise.all([
-      fetch('http://localhost:5216/api/notes/folders'),
-      fetch('http://localhost:5216/api/notes/tags')
+      fetch('https://noteesapp-be.onrender.com/api/notes/folders'),
+      fetch('https://noteesapp-be.onrender.com/api/notes/tags')
     ])
     
     if (foldersRes.ok) {

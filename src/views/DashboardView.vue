@@ -89,7 +89,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 
-const API_BASE_URL = 'http://localhost:5216/api'
+const API_BASE_URL = 'https://noteesapp-be.onrender.com/api'
 
 const notes = ref<any[]>([])
 const isLoading = ref(true)
