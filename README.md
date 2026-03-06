@@ -1,35 +1,53 @@
-# 📝 Sobre o NoteesApp
-
-O **NoteesApp** é um sistema completo de gerenciamento de notas desenvolvido com arquitetura moderna e escalável. Com uma interface intuitiva e recursos poderosos, ele permite que você organize suas ideias, projetos e lembretes de forma simples e eficiente.
-
-## ✨ Destaques
-
-- 🎨 **Interface moderna** com temas claro e escuro
-- 📁 **Organização inteligente** por pastas e tags
-- 🔍 **Busca rápida** em todo o conteúdo das notas
-- 📌 **Fixação de notas** importantes no topo
-- 📱 **Totalmente responsivo** para desktop e mobile
-- 🔐 **API RESTful** segura e documentada com Swagger
-- ⚡ **Performance otimizada** com Vue.js 3 e .NET 8
----
 # 📝 NoteesApp - Frontend
 
-Interface moderna e responsiva para o aplicativo de notas NoteesApp, desenvolvida com Vue.js 3 e TypeScript.
+> Interface moderna e responsiva para gerenciamento de notas, desenvolvida com Vue.js 3 e TypeScript.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vue.js&logoColor=white" alt="Vue.js">
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+</p>
+
+---
+
+## 📖 Sobre
+
+O **NoteesApp Frontend** é a interface do usuário do sistema de gerenciamento de notas NoteesApp. Desenvolvido com Vue.js 3 e TypeScript, oferece uma experiência fluida, responsiva e intuitiva para criar, organizar e buscar suas notas com facilidade.
+
+### ✨ Destaques
+
+| Recurso | Descrição |
+|---------|-----------|
+| 🎨 **Temas** | Alternância entre tema claro e escuro com persistência |
+| 📁 **Organização** | Notas agrupadas por pastas e tags personalizáveis |
+| 🔍 **Busca** | Pesquisa em tempo real no título e conteúdo das notas |
+| 📌 **Fixação** | Destaque para notas importantes no topo da lista |
+| 📱 **Responsivo** | Layout adaptável para desktop, tablet e mobile |
+| ⌨️ **Acessível** | Navegação por teclado e contraste adequado |
+| ⚡ **Performático** | Carregamento rápido com Vite e code splitting |
+
+---
 
 ## 🚀 Tecnologias
 
-- **Vue.js 3** - Framework progressivo
-- **TypeScript** - Tipagem estática
-- **Vite** - Build tool ultrarrápida
-- **Vue Router** - Roteamento
-- **CSS3** - Estilização com variáveis CSS
-- **Fetch API** - Requisições HTTP
+- **Vue.js 3** (Composition API)
+- **Vue Router 4**
+- **TypeScript 5.x**
+- **Vite 5.x**
+- **ESLint + Prettier**
+- **CSS3 com Variáveis CSS**
+- **Fetch API nativa**
+
+---
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+
-- npm ou yarn
-- Git
+- **Node.js** 18.x ou superior
+- **npm** 9.x ou superior
+- **Git** instalado
+
+---
 
 ## 🔧 Instalação
 
