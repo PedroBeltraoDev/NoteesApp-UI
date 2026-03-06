@@ -82,3 +82,19 @@ npm run preview    -> Preview da build de produção
 
 npm run lint       -> Verifica código com ESLint
 ```
+
+## 🎯 Roadmap
+
+- Autenticação de usuários
+- Sincronização em tempo real (WebSocket)
+- Exportar notas como PDF
+- Compartilhamento de notas via link
+- Upload de imagens nas notas
+- Tags com cores personalizadas
+- Arquivamento de notas
+
+## 👨‍💻 Autor
+
+Pedro Beltrão
+
+- GitHub: @PedroBeltraoDev
