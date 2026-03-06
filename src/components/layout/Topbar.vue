@@ -8,7 +8,7 @@
       </nav>
     </div>
     
-    <div class="topbar-right">
+    <div class="topbar-right"> 
       <div class="search-box">
         <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"></circle>
@@ -20,17 +20,30 @@
           placeholder="Buscar notas..." 
           @input="handleSearch"
         />
-      </div>
+      </div> 
       
       <button v-if="$route.path === '/'" class="btn-new-note" @click="$emit('createNote')">
         Nova Nota +
+      </button>
+      <button @click="handleLogout" class="btn-logout">
+        Sair 🔓
       </button>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits(['search', 'createNote'])
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const emit = defineEmits(['createNote', 'search'])
+
+const handleLogout = () => {
+  localStorage.removeItem('noteesapp_auth')
+  localStorage.removeItem('noteesapp_auth_time')
+  router.push('/login')
+}
 
 const handleSearch = (event: Event) => {
   const target = event.target as HTMLInputElement

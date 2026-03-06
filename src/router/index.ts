@@ -1,17 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import DashboardView from '../views/DashboardView.vue'
-import SettingsView from '../views/SettingsView.vue'
+import { setupAuthGuard } from '@/middleware/auth'
 
 const routes = [
-  { 
-    path: '/', 
-    name: 'Dashboard',
-    component: DashboardView 
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/LoginView.vue')
   },
-  { 
-    path: '/configuracoes', 
+  {
+    path: '/',
+    name: 'Dashboard',
+    component: () => import('@/views/DashboardView.vue')
+  },
+  {
+    path: '/configuracoes',
     name: 'Configurações',
-    component: SettingsView 
+    component: () => import('@/views/SettingsView.vue')
   }
 ]
 
@@ -19,5 +23,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+setupAuthGuard(router)
 
 export default router
