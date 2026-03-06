@@ -4,9 +4,15 @@
     
     <div class="main-container">
       <Sidebar 
+        ref="sidebarRef"
+        :folders="folders"
+        :tags="tags"
+        :selectedFolder="selectedFolder"
+        :selectedTag="selectedTag"
         @selectFolder="selectFolder" 
         @selectTag="selectTag"
         @clearFilters="clearFilters"
+        v-model:mobileOpen="isMobileMenuOpen"
       />
       
       <main class="content">
@@ -265,6 +271,23 @@ const closeModal = () => {
   isModalOpen.value = false
   editingNote.value = null
 }
+const sidebarRef = ref<any>(null)
+const isMobileMenuOpen = ref(false)
+
+const handleToggleMobileMenu = () => {
+  if (sidebarRef.value) {
+    sidebarRef.value.openMenu()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('toggle-mobile-menu', handleToggleMobileMenu)
+  
+  // Cleanup
+  return () => {
+    window.removeEventListener('toggle-mobile-menu', handleToggleMobileMenu)
+  }
+})
 </script>
 
 <style scoped>
@@ -275,30 +298,32 @@ const closeModal = () => {
 
 .main-container {
   display: flex;
-  height: calc(100vh - 64px);
+  min-height: calc(100vh - 73px);
 }
 
 .content {
   flex: 1;
-  padding: 40px;
+  padding: 24px 16px;
   overflow-y: auto;
   background: var(--bg-primary);
 }
 
 .workspace-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .header-left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 12px;
 }
 
 .workspace-title {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -308,13 +333,12 @@ const closeModal = () => {
 .active-filter {
   background: var(--accent-color);
   color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-left: 16px;
+  gap: 6px;
   font-weight: 500;
 }
 
@@ -322,28 +346,41 @@ const closeModal = () => {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .filters {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.filters::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
 }
 
 .filter-btn {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
   box-shadow: var(--shadow-sm);
 }
 
@@ -360,18 +397,18 @@ const closeModal = () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 400px;
+  min-height: 400px;
   color: var(--text-secondary);
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--border-color);
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
   border-top-color: var(--accent-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 @keyframes spin {
@@ -380,24 +417,75 @@ const closeModal = () => {
 
 .empty-state {
   text-align: center;
-  padding: 80px 20px;
+  padding: 60px 20px;
 }
 
 .empty-state h2 {
-  font-size: 24px;
-  margin-bottom: 12px;
+  font-size: 20px;
+  margin-bottom: 8px;
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .empty-state p {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* Tablet */
+@media (min-width: 641px) {
+  .content {
+    padding: 32px 24px;
+  }
+  
+  .workspace-title {
+    font-size: 28px;
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 769px) {
+  .content {
+    padding: 40px;
+  }
+  
+  .workspace-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  
+  .workspace-title {
+    font-size: 32px;
+  }
+  
+  .filters {
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+/* Large Desktop */
+@media (min-width: 1200px) {
+  .notes-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 </style>

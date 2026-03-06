@@ -1,147 +1,238 @@
 <template>
-  <aside class="sidebar">
-    <div class="sidebar-section">
-      <h3 class="section-title">Pastas</h3>
-      <ul class="sidebar-list">
-        <li 
+  <aside :class="['sidebar', { 'sidebar-open': isOpen }]">
+    <div class="sidebar-overlay" @click="closeSidebar"></div>
+    
+    <div class="sidebar-content">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">PASTAS</h2>
+        <button @click="closeSidebar" class="close-mobile-btn">✕</button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button 
           v-for="folder in folders" 
           :key="folder"
-          class="sidebar-item"
-          :class="{ active: selectedFolder === folder }"
           @click="selectFolder(folder)"
+          :class="['nav-item', { active: selectedFolder === folder }]"
         >
+          <span class="folder-icon">📁</span>
           {{ folder }}
-        </li>
-      </ul>
-    </div>
-    
-    <div class="sidebar-section">
-      <h3 class="section-title">Tags</h3>
-      <ul v-if="tags.length > 0" class="sidebar-list">
-        <li 
-          v-for="tag in tags" 
-          :key="tag"
-          class="sidebar-item"
-          :class="{ active: selectedTag === tag }"
-          @click="selectTag(tag)"
-        >
-          {{ tag }}
-        </li>
-      </ul>
-      <p v-else class="no-tags-message">Nenhuma tag foi criada</p>
+        </button>
+      </nav>
+      
+      <div class="sidebar-section">
+        <h2 class="sidebar-title">TAGS</h2>
+        <nav class="sidebar-nav">
+          <button 
+            v-for="tag in tags" 
+            :key="tag"
+            @click="selectTag(tag)"
+            :class="['nav-item tag-item', { active: selectedTag === tag }]"
+          >
+            <span class="tag-icon">#</span>
+            {{ tag }}
+          </button>
+        </nav>
+        <p v-if="tags.length === 0" class="empty-tags">Nenhuma tag foi criada</p>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
-const folders = ref<string[]>(['Projects', 'Personal', 'Learning', 'Travel', 'Archives'])
-const tags = ref<string[]>([])
-const selectedFolder = ref<string | null>(null)
-const selectedTag = ref<string | null>(null)
+const props = defineProps<{
+  folders: string[]
+  tags: string[]
+  selectedFolder: string | null
+  selectedTag: string | null
+}>()
 
-const emit = defineEmits(['selectFolder', 'selectTag', 'clearFilters'])
+const emit = defineEmits<{
+  selectFolder: [folder: string]
+  selectTag: [tag: string]
+  clearFilters: []
+  'update:mobileOpen': [value: boolean]
+}>()
+
+const isOpen = ref(false)
 
 const selectFolder = (folder: string) => {
-  if (selectedFolder.value === folder) {
-    selectedFolder.value = null
-    emit('clearFilters')
-  } else {
-    selectedFolder.value = folder
-    selectedTag.value = null
-    emit('selectFolder', folder)
-  }
+  emit('selectFolder', folder)
+  isOpen.value = false
 }
 
 const selectTag = (tag: string) => {
-  if (selectedTag.value === tag) {
-    selectedTag.value = null
-    emit('clearFilters')
-  } else {
-    selectedTag.value = tag
-    selectedFolder.value = null
-    emit('selectTag', tag)
-  }
+  emit('selectTag', tag)
+  isOpen.value = false
 }
 
-onMounted(async () => {
-  try {
-    const [foldersRes, tagsRes] = await Promise.all([
-      fetch('https://noteesapp-be.onrender.com/api/notes/folders'),
-      fetch('https://noteesapp-be.onrender.com/api/notes/tags')
-    ])
-    
-    if (foldersRes.ok) {
-      folders.value = await foldersRes.json()
-    }
-    
-    if (tagsRes.ok) {
-      const fetchedTags = await tagsRes.json()
-      tags.value = fetchedTags.length > 0 ? fetchedTags : []
-    }
-  } catch (error) {
-    console.error('Erro ao carregar pastas/tags:', error)
+const closeSidebar = () => {
+  isOpen.value = false
+  emit('update:mobileOpen', false)
+}
+
+watch(() => [props.selectedFolder, props.selectedTag], () => {
+  if (window.innerWidth < 768) {
+    isOpen.value = false
+  }
+})
+
+defineExpose({
+  openMenu: () => {
+    isOpen.value = true
+    emit('update:mobileOpen', true)
   }
 })
 </script>
 
 <style scoped>
 .sidebar {
+  position: fixed;
+  top: 0;
+  left: -320px;
   width: 280px;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border-color);
-  padding: 32px 24px;
-  height: calc(100vh - 64px);
+  height: 100vh;
+  background: var(--bg-secondary);
+  z-index: 1000;
+  transition: left 0.3s ease;
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar-open {
+  left: 0;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+.sidebar-open .sidebar-overlay {
+  display: block;
+}
+
+.sidebar-content {
+  padding: 24px;
   overflow-y: auto;
+  height: 100vh;
 }
 
-.sidebar-section {
-  margin-bottom: 32px;
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-.section-title {
-  font-size: 16px;
+.sidebar-title {
+  font-size: 12px;
   font-weight: 700;
-  color: var(--sidebar-text);
-  margin: 0 0 16px 0;
-  padding-left: 12px;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.sidebar-list {
-  list-style: none;
-  padding: 0;
   margin: 0;
 }
 
-.no-tags-message {
-  color: var(--sidebar-text);
+.close-mobile-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.close-mobile-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
   font-size: 14px;
-  padding-left: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.folder-icon,
+.tag-icon {
+  font-size: 16px;
+}
+
+.tag-item {
+  font-size: 13px;
+}
+
+.empty-tags {
+  font-size: 13px;
+  color: var(--text-tertiary);
   font-style: italic;
 }
 
-.sidebar-item {
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--sidebar-text);
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 4px;
-  font-weight: 500;
+.sidebar-section {
+  margin-top: 32px;
 }
 
-.sidebar-item:hover {
-  background: var(--hover-sidebar-item);
-  color: var(--topbar-text);
-}
-
-.sidebar-item.active {
-  background: var(--sidebar-active);
-  color: white;
-  font-weight: 600;
+/* Desktop - Sidebar sempre visível */
+@media (min-width: 769px) {
+  .sidebar {
+    position: relative;
+    left: 0;
+    width: 260px;
+    min-width: 260px;
+    box-shadow: none;
+  }
+  
+  .sidebar-overlay {
+    display: none !important;
+  }
+  
+  .close-mobile-btn {
+    display: none !important;
+  }
+  
+  .sidebar-content {
+    padding: 24px 16px;
+    height: auto;
+  }
 }
 </style>

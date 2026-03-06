@@ -1,0 +1,24 @@
+/* Breakpoints */
+:root {
+  --mobile-max-width: 640px;
+  --tablet-max-width: 768px;
+  --desktop-max-width: 1024px;
+  --large-desktop-max-width: 1280px;
+}
+
+/* Mobile First Breakpoints */
+@media (max-width: 640px) {
+  /* Mobile extra small */
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Mobile large / Tablet small */
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Tablet */
+}
+
+@media (min-width: 1025px) {
+  /* Desktop */
+}

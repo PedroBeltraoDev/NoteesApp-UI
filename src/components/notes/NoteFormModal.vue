@@ -173,7 +173,7 @@ const handleSubmit = () => {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
@@ -186,19 +186,18 @@ const handleSubmit = () => {
 
 .modal {
   background: var(--card-bg);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(100%);
   }
   to {
     opacity: 1;
@@ -210,12 +209,16 @@ const handleSubmit = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
+  padding: 20px;
   border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 1;
 }
 
 .modal-header h2 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -242,7 +245,7 @@ const handleSubmit = () => {
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px;
 }
 
 .form-group {
@@ -251,6 +254,7 @@ const handleSubmit = () => {
 
 .form-row {
   display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
@@ -277,7 +281,7 @@ const handleSubmit = () => {
 .textarea-field,
 .select-field {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
@@ -302,6 +306,7 @@ const handleSubmit = () => {
 .textarea-field {
   resize: vertical;
   font-family: inherit;
+  min-height: 120px;
 }
 
 .error-message {
@@ -315,15 +320,18 @@ const handleSubmit = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 20px;
   border-top: 1px solid var(--border-color);
+  position: sticky;
+  bottom: 0;
+  background: var(--card-bg);
 }
 
 .btn-cancel {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: none;
-  padding: 10px 20px;
+  padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -339,7 +347,7 @@ const handleSubmit = () => {
   background: var(--accent-color);
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -354,5 +362,37 @@ const handleSubmit = () => {
 .btn-save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Desktop */
+@media (min-width: 641px) {
+  .modal-overlay {
+    align-items: center;
+  }
+  
+  .modal {
+    border-radius: 16px;
+    max-width: 600px;
+    max-height: 90vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+  
+  .modal-body {
+    padding: 24px;
+  }
+  
+  .form-row {
+    flex-direction: row;
+  }
+}
+
+@media (min-width: 769px) {
+  .modal-header h2 {
+    font-size: 20px;
+  }
+  
+  .modal-body {
+    padding: 24px;
+  }
 }
 </style>
