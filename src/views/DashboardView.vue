@@ -17,7 +17,7 @@
       <main class="content">
         <div class="workspace-header">
           <div class="header-left">
-            <h2 class="workspace-title">Minha Área de Trabalho</h2>
+            <h2 class="workspace-title">Minhas Notas</h2>
             <span v-if="activeFilter" class="active-filter">
               Filtrando por: {{ activeFilter }}
               <button @click="clearFilters" class="clear-filter">✕</button>
