@@ -203,12 +203,12 @@ const clearFilters = () => {
 }
 
 const handleCreateNote = () => {
-  editingNote.value = null
+  editingNote.value = null 
   isModalOpen.value = true
 }
 
 const handleEditNote = (note: any) => {
-  editingNote.value = note
+  editingNote.value = note 
   isModalOpen.value = true
 }
 
@@ -243,8 +243,9 @@ const saveNote = async (noteData: any) => {
     } else {
       await api.createNote(noteData)
     }
-    
-    await loadNotes()
+
+    await Promise.all([loadNotes(), loadTags()])
+
     closeModal()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
@@ -267,7 +268,7 @@ const handleSearch = (query: string) => {
 
 const closeModal = () => {
   isModalOpen.value = false
-  editingNote.value = null
+  editingNote.value = null 
 }
 
 const handleToggleMobileMenu = () => {
