@@ -454,6 +454,10 @@ onUnmounted(() => {
 
 /* Desktop */
 @media (min-width: 769px) {
+  .main-container {
+    min-height: calc(100vh - 73px);
+  }
+  
   .content {
     padding: 40px;
   }

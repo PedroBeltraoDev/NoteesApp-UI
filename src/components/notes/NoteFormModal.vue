@@ -1,65 +1,71 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="closeModal">
+  <div v-if="isOpen" class="modal-overlay" @click.self="handleCancel">
     <div class="modal">
       <div class="modal-header">
-        <h2>{{ isEditing ? 'Editar Nota' : 'Nova Nota' }}</h2>
-        <button @click="closeModal" class="close-btn">✕</button>
+        <h2>{{ note ? 'Editar Nota' : 'Nova Nota' }}</h2>
+        <button @click="handleCancel" class="close-btn">✕</button>
       </div>
       
       <div class="modal-body">
         <div class="form-group">
-          <label>Título * <span class="char-count">{{ titleCharCount }}/200</span></label>
-          <input 
-            v-model="localTitle" 
-            type="text" 
-            placeholder="Título da nota..."
-            class="input-field"
-            :class="{ error: errors.title || isTitleLimitExceeded }"
+          <label for="title">
+            Título *
+            <span class="char-count">{{ title.length }}/200</span>
+          </label>
+          <input
+            id="title"
+            v-model="title"
+            type="text"
+            placeholder="Digite o título da nota"
+            :class="{ error: errors.title }"
+            maxlength="200"
           />
           <span v-if="errors.title" class="error-message">{{ errors.title }}</span>
-          <span v-if="isTitleLimitExceeded" class="error-message">Limite de 200 caracteres excedido</span>
         </div>
         
         <div class="form-group">
-          <label>Conteúdo * <span class="char-count">{{ contentCharCount }}/1000</span></label>
-          <textarea 
-            v-model="localContent" 
-            placeholder="Escreva sua nota..."
+          <label for="content">
+            Conteúdo *
+            <span class="char-count">{{ content.length }}/1000</span>
+          </label>
+          <textarea
+            id="content"
+            v-model="content"
+            placeholder="Digite o conteúdo da nota"
+            :class="{ error: errors.content }"
+            maxlength="1000"
             rows="6"
-            class="textarea-field"
-            :class="{ error: errors.content || isContentLimitExceeded }"
           ></textarea>
           <span v-if="errors.content" class="error-message">{{ errors.content }}</span>
-          <span v-if="isContentLimitExceeded" class="error-message">Limite de 1000 caracteres excedido</span>
         </div>
         
         <div class="form-row">
           <div class="form-group">
-            <label>Pasta (opcional)</label>
-            <select v-model="localFolder">  
+            <label for="folder">Pasta (opcional)</label>
+            <select id="folder" v-model="folder" class="select-field">
               <option value="">Nenhuma</option>
+              <option value="Aprendendo">Aprendendo</option>
               <option value="Projetos">Projetos</option>
               <option value="Pessoal">Pessoal</option>
-              <option value="Aprendendo">Aprendendo</option>
-              <option value="Viagem">Viagem</option>
-              <option value="Arquivos">Arquivos</option>
+              <option value="Trabalho">Trabalho</option>
+              <option value="Ideias">Ideias</option>
             </select>
           </div>
           
           <div class="form-group">
-            <label>Tags (separadas por vírgula)</label>
-            <input 
-              v-model="localTags" 
-              type="text" 
-              placeholder="#Trabalho, #Ideia"
-              class="input-field"
+            <label for="tags">Tags (separadas por vírgula)</label>
+            <input
+              id="tags"
+              v-model="tags"
+              type="text"
+              placeholder="ex: vue, typescript, api"
             />
           </div>
         </div>
       </div>
       
       <div class="modal-footer">
-        <button @click="closeModal" class="btn-cancel">Cancelar</button>
+        <button @click="handleCancel" class="btn-cancel">Cancelar</button>
         <button @click="handleSubmit" class="btn-save">Salvar</button>
       </div>
     </div>
@@ -67,100 +73,85 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 
-const props = defineProps({
-  isOpen: { type: Boolean, default: false },
-  note: { type: Object, default: null }
-})
+const props = defineProps<{
+  isOpen: boolean
+  note: any | null
+}>()
 
 const emit = defineEmits(['close', 'saved'])
 
-const localTitle = ref('')
-const localContent = ref('')
-const localFolder = ref('')
-const localTags = ref('')
+const title = ref('')
+const content = ref('')
+const folder = ref('')
+const tags = ref('')
+const errors = ref<any>({})
 
-const errors = ref({ title: '', content: '' })
-
-const isEditing = computed(() => !!props.note?.id)
-const contentCharCount = computed(() => localContent.value.length)
-const titleCharCount = computed(() => localTitle.value.length)
-const isContentLimitExceeded = computed(() => contentCharCount.value > 1000)
-const isTitleLimitExceeded = computed(() => titleCharCount.value > 200)
-
-watch(() => props.note, (newNote: any) => {
-  if (newNote) {
-    localTitle.value = newNote.title ?? ''
-    localContent.value = newNote.content ?? ''
-    localFolder.value = newNote.folder ?? ''  
-    localTags.value = newNote.tags?.join(', ') ?? ''
+watch(() => props.isOpen, (newValue) => {
+  if (newValue) {
+    if (props.note) {
+      title.value = props.note.title || ''
+      content.value = props.note.content || ''
+      folder.value = props.note.folder || ''
+      tags.value = props.note.tags?.join(', ') || ''
+    } else {
+      resetForm()
+    }
   } else {
-    localTitle.value = ''
-    localContent.value = ''
-    localFolder.value = ''  
-    localTags.value = ''
+    resetForm()
   }
-  errors.value = { title: '', content: '' }
 }, { immediate: true })
 
-const closeModal = () => {
-  errors.value = { title: '', content: '' }
-  emit('close')
+const resetForm = () => {
+  title.value = ''
+  content.value = ''
+  folder.value = ''
+  tags.value = ''
+  errors.value = {}
 }
 
 const validateForm = () => {
-  let isValid = true
-  errors.value = { title: '', content: '' }
+  errors.value = {}
   
-  if (!localTitle.value.trim()) {
+  if (!title.value.trim()) {
     errors.value.title = 'Título é obrigatório'
-    isValid = false
-  } else if (localTitle.value.trim().length < 3) {
+  } else if (title.value.length < 3) {
     errors.value.title = 'Título deve ter pelo menos 3 caracteres'
-    isValid = false
-  } else if (localTitle.value.trim().length > 200) {
+  } else if (title.value.length > 200) {
     errors.value.title = 'Título deve ter no máximo 200 caracteres'
-    isValid = false
   }
   
-  if (!localContent.value.trim()) {
+  if (!content.value.trim()) {
     errors.value.content = 'Conteúdo é obrigatório'
-    isValid = false
-  } else if (localContent.value.trim().length < 10) {
+  } else if (content.value.length < 10) {
     errors.value.content = 'Conteúdo deve ter pelo menos 10 caracteres'
-    isValid = false
-  } else if (localContent.value.trim().length > 1000) {
+  } else if (content.value.length > 1000) {
     errors.value.content = 'Conteúdo deve ter no máximo 1000 caracteres'
-    isValid = false
   }
   
-  return isValid
+  return Object.keys(errors.value).length === 0
 }
 
 const handleSubmit = () => {
-  if (!validateForm()) {
-    return
-  }
+  if (!validateForm()) return
   
-  const tagsArray = localTags.value
+  const tagsArray = tags.value
     .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 0)
+    .map(t => t.trim())
+    .filter(t => t.length > 0)
   
-  const noteData: any = {
-    title: localTitle.value.trim(),
-    content: localContent.value.trim(),
+  emit('saved', {
+    title: title.value.trim(),
+    content: content.value.trim(),
+    folder: folder.value.trim() || null,
     tags: tagsArray,
-    folder: localFolder.value || null  
-  }
-  
-  if (isEditing.value && props.note) {
-    noteData.id = props.note.id  
-    noteData.createdAt = props.note.createdAt  
-  }
-  
-  emit('saved', noteData)
+    isPinned: false
+  })
+}
+
+const handleCancel = () => {
+  emit('close')
 }
 </script>
 
