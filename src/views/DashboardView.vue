@@ -23,36 +23,6 @@
               <button @click="clearFilters" class="clear-filter">✕</button>
             </span>
           </div>
-          <div class="filters">
-            <button 
-              class="filter-btn" 
-              :class="{ active: currentSort === 'all' }"
-              @click="setSort('all')"
-            >
-              Todas as Notas
-            </button>
-            <button 
-              class="filter-btn"
-              :class="{ active: currentSort === 'recent' }"
-              @click="setSort('recent')"
-            >
-              Recentes
-            </button>
-            <button 
-              class="filter-btn"
-              :class="{ active: currentSort === 'tags' }"
-              @click="setSort('tags')"
-            >
-              Tags
-            </button>
-            <button 
-              class="filter-btn"
-              :class="{ active: currentSort === 'date' }"
-              @click="setSort('date')"
-            >
-              Por Data
-            </button>
-          </div>
         </div>
         
         <div v-if="isLoading" class="loading">
@@ -105,7 +75,6 @@ const editingNote = ref<any>(null)
 const searchQuery = ref('')
 const selectedFolder = ref<string | null>(null)
 const selectedTag = ref<string | null>(null)
-const currentSort = ref('all')
 const sidebarRef = ref<any>(null)
 
 // COMPUTED
@@ -118,36 +87,15 @@ const activeFilter = computed(() => {
 const sortedNotes = computed(() => {
   let sorted = [...notes.value]
   
-  switch (currentSort.value) {
-    case 'recent':
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      sorted = sorted.filter(n => new Date(n.createdAt).getTime() > weekAgo.getTime())
-      break
-    
-    case 'tags':
-      sorted = sorted.filter(n => n.tags && n.tags.length > 0)
-      break
-    
-    case 'date':
-      sorted.sort((a: any, b: any) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      })
-      break
-    
-    case 'all':
-    default:
-      sorted.sort((a: any, b: any) => {
-        if (a.isPinned && !b.isPinned) return -1
-        if (!a.isPinned && b.isPinned) return 1
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      })
-  }
+  sorted.sort((a: any, b: any) => {
+    if (a.isPinned && !b.isPinned) return -1
+    if (!a.isPinned && b.isPinned) return 1
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
   
   return sorted
 })
 
-// FUNÇÕES DE CARREGAMENTO
 const loadNotes = async () => {
   try {
     isLoading.value = true
@@ -177,11 +125,6 @@ const loadTags = async () => {
   } catch (error) {
     console.error('Erro ao buscar tags:', error)
   }
-}
-
-// FUNÇÕES DE AÇÃO
-const setSort = (sortType: string) => {
-  currentSort.value = sortType
 }
 
 const selectFolder = (folder: string) => {
@@ -277,7 +220,6 @@ const handleToggleMobileMenu = () => {
   }
 }
 
-// LIFECYCLE
 onMounted(async () => {
   await Promise.all([loadNotes(), loadFolders(), loadTags()])
   window.addEventListener('toggle-mobile-menu', handleToggleMobileMenu)
@@ -355,45 +297,6 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.filters {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.filters::-webkit-scrollbar {
-  height: 4px;
-}
-
-.filters::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
-
-.filter-btn {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-}
-
-.filter-btn:hover,
-.filter-btn.active {
-  background: var(--bg-secondary);
-  color: var(--accent-color);
-  border-color: var(--accent-color);
-  box-shadow: var(--shadow-md);
-}
-
 .loading {
   display: flex;
   flex-direction: column;
@@ -466,7 +369,6 @@ onUnmounted(() => {
     padding: 40px;
     min-height: calc(100vh - 73px);
   }
-}
   
   .workspace-header {
     flex-direction: row;
@@ -479,15 +381,11 @@ onUnmounted(() => {
     font-size: 32px;
   }
   
-  .filters {
-    overflow-x: visible;
-    padding-bottom: 0;
-  }
-  
   .notes-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
+}
 
 /* Large Desktop */
 @media (min-width: 1200px) {
