@@ -90,17 +90,18 @@ defineExpose({
 <style scoped>
 .sidebar {
   position: fixed;
-  top: 0;
+  top: 73px;
   left: -320px;
   width: 280px;
-  height: 100vh; /* ✅ Altura total da viewport */
-  min-height: 100vh; /* ✅ Garante altura mínima */
+  height: calc(100vh - 73px);
+  min-height: calc(100vh - 73px);
   background: var(--bg-secondary);
   z-index: 1000;
   transition: left 0.3s ease;
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .sidebar-open {
@@ -115,7 +116,7 @@ defineExpose({
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: -1;
+  z-index: 999;
 }
 
 .sidebar-open .sidebar-overlay {
@@ -124,7 +125,6 @@ defineExpose({
 
 .sidebar-content {
   padding: 24px;
-  overflow-y: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -217,13 +217,15 @@ defineExpose({
   margin-top: 32px;
 }
 
+/* Desktop */
 @media (min-width: 769px) {
   .sidebar {
-    position: relative;
+    position: sticky;
+    top: 73px;
     left: 0;
     width: 260px;
     min-width: 260px;
-    height: calc(100vh - 73px); 
+    height: calc(100vh - 73px);
     min-height: calc(100vh - 73px);
     box-shadow: none;
   }
@@ -238,7 +240,6 @@ defineExpose({
   
   .sidebar-content {
     padding: 24px 16px;
-    height: auto;
   }
 }
 </style>

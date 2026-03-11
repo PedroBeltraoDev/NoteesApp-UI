@@ -17,7 +17,7 @@
             v-model="title"
             type="text"
             placeholder="Digite o título da nota"
-            :class="{ error: errors.title }"
+            :class="['input-field', { error: errors.title }]"
             maxlength="200"
           />
           <span v-if="errors.title" class="error-message">{{ errors.title }}</span>
@@ -32,7 +32,7 @@
             id="content"
             v-model="content"
             placeholder="Digite o conteúdo da nota"
-            :class="{ error: errors.content }"
+            :class="['textarea-field', { error: errors.content }]"
             maxlength="1000"
             rows="6"
           ></textarea>
@@ -59,6 +59,7 @@
               v-model="tags"
               type="text"
               placeholder="ex: vue, typescript, api"
+              class="input-field"
             />
           </div>
         </div>
@@ -88,6 +89,14 @@ const folder = ref('')
 const tags = ref('')
 const errors = ref<any>({})
 
+const resetForm = () => {
+  title.value = ''
+  content.value = ''
+  folder.value = ''
+  tags.value = ''
+  errors.value = {}
+}
+
 watch(() => props.isOpen, (newValue) => {
   if (newValue) {
     if (props.note) {
@@ -102,14 +111,6 @@ watch(() => props.isOpen, (newValue) => {
     resetForm()
   }
 }, { immediate: true })
-
-const resetForm = () => {
-  title.value = ''
-  content.value = ''
-  folder.value = ''
-  tags.value = ''
-  errors.value = {}
-}
 
 const validateForm = () => {
   errors.value = {}
@@ -162,9 +163,9 @@ const handleCancel = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
@@ -176,19 +177,20 @@ const handleCancel = () => {
 }
 
 .modal {
-  background: var(--card-bg);
-  border-radius: 16px 16px 0 0;
-  width: 100%;
+  background: var(--bg-secondary, #2d2d2d);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(100%);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -200,18 +202,14 @@ const handleCancel = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  background: var(--card-bg);
-  z-index: 1;
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color, #404040);
 }
 
 .modal-header h2 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #ffffff);
   margin: 0;
 }
 
@@ -219,7 +217,7 @@ const handleCancel = () => {
   background: none;
   border: none;
   font-size: 24px;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #a0a0a0);
   cursor: pointer;
   width: 32px;
   height: 32px;
@@ -231,12 +229,12 @@ const handleCancel = () => {
 }
 
 .close-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+  background: var(--hover-bg, #3d3d3d);
+  color: var(--text-primary, #ffffff);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .form-group {
@@ -245,7 +243,6 @@ const handleCancel = () => {
 
 .form-row {
   display: flex;
-  flex-direction: column;
   gap: 16px;
 }
 
@@ -257,13 +254,13 @@ const handleCancel = () => {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--text-primary, #ffffff);
   margin-bottom: 8px;
 }
 
 .char-count {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-tertiary, #666666);
   font-weight: 400;
   float: right;
 }
@@ -273,12 +270,18 @@ const handleCancel = () => {
 .select-field {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-color, #404040);
   border-radius: 8px;
   font-size: 14px;
-  background: var(--input-bg);
-  color: var(--text-primary);
+  background: var(--bg-primary, #1a1a1a);
+  color: var(--text-primary, #ffffff);
   transition: all 0.2s;
+  font-family: inherit;
+}
+
+.input-field::placeholder,
+.textarea-field::placeholder {
+  color: var(--text-tertiary, #666666);
 }
 
 .input-field.error,
@@ -290,14 +293,22 @@ const handleCancel = () => {
 .textarea-field:focus,
 .select-field:focus {
   outline: none;
-  border-color: var(--accent-color);
+  border-color: var(--accent-color, #3b82f6);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .textarea-field {
   resize: vertical;
-  font-family: inherit;
   min-height: 120px;
+}
+
+.select-field {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
 }
 
 .error-message {
@@ -311,16 +322,13 @@ const handleCancel = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px;
-  border-top: 1px solid var(--border-color);
-  position: sticky;
-  bottom: 0;
-  background: var(--card-bg);
+  padding: 24px;
+  border-top: 1px solid var(--border-color, #404040);
 }
 
 .btn-cancel {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: var(--bg-tertiary, #3d3d3d);
+  color: var(--text-primary, #ffffff);
   border: none;
   padding: 12px 20px;
   border-radius: 8px;
@@ -331,11 +339,11 @@ const handleCancel = () => {
 }
 
 .btn-cancel:hover {
-  background: var(--border-color);
+  background: var(--border-color, #404040);
 }
 
 .btn-save {
-  background: var(--accent-color);
+  background: var(--accent-color, #3b82f6);
   color: white;
   border: none;
   padding: 12px 20px;
@@ -347,43 +355,30 @@ const handleCancel = () => {
 }
 
 .btn-save:hover {
-  background: var(--accent-hover);
+  background: var(--accent-hover, #2563eb);
+  transform: translateY(-1px);
 }
 
 .btn-save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
-/* Desktop */
-@media (min-width: 641px) {
-  .modal-overlay {
-    align-items: center;
-  }
-  
+/* Mobile */
+@media (max-width: 640px) {
   .modal {
-    border-radius: 16px;
-    max-width: 600px;
-    max-height: 90vh;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 95%;
+    max-height: 95vh;
   }
   
   .modal-body {
-    padding: 24px;
+    padding: 16px;
   }
   
   .form-row {
-    flex-direction: row;
-  }
-}
-
-@media (min-width: 769px) {
-  .modal-header h2 {
-    font-size: 20px;
-  }
-  
-  .modal-body {
-    padding: 24px;
+    flex-direction: column;
+    gap: 0;
   }
 }
 </style>

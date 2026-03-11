@@ -292,10 +292,13 @@ onUnmounted(() => {
 .dashboard {
   min-height: 100vh;
   background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 .main-container {
   display: flex;
+  flex: 1;
   min-height: calc(100vh - 73px);
 }
 
@@ -304,6 +307,7 @@ onUnmounted(() => {
   padding: 24px 16px;
   overflow-y: auto;
   background: var(--bg-primary);
+  min-height: calc(100vh - 73px);
 }
 
 .workspace-header {
@@ -460,7 +464,9 @@ onUnmounted(() => {
   
   .content {
     padding: 40px;
+    min-height: calc(100vh - 73px);
   }
+}
   
   .workspace-header {
     flex-direction: row;
@@ -482,7 +488,6 @@ onUnmounted(() => {
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
-}
 
 /* Large Desktop */
 @media (min-width: 1200px) {
