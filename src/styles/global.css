@@ -1,6 +1,4 @@
-/* ============================================
-   GLOBAL STYLES
-   ============================================ */
+/* GLOBAL STYLES */
 
 body {
   background: var(--bg-primary);
@@ -12,7 +10,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* SCROLLBAR PERSONALIZADA*/
+/* SCROLLBAR PERSONALIZADA */
 
 ::-webkit-scrollbar {
   width: 8px;

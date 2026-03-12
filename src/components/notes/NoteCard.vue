@@ -76,7 +76,6 @@ defineEmits(['edit', 'delete', 'togglePin'])
 
 const isModalOpen = ref(false)
 
-// ✅ CORREÇÃO 1: Acessar props.note.content ao invés de props.content
 const truncatedContent = computed(() => {
   if (props.note.content.length <= 150) {
     return props.note.content
@@ -156,7 +155,7 @@ const closeModal = () => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 4;
-  line-clamp: 4; /* ✅ CORREÇÃO 2: Adicionado para compatibilidade */
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   text-overflow: ellipsis;
 }
