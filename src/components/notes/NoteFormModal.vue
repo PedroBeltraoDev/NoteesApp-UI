@@ -1,76 +1,94 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="handleCancel">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>{{ note ? 'Editar Nota' : 'Nova Nota' }}</h2>
-        <button @click="handleCancel" class="close-btn">✕</button>
+  <PDialog 
+    v-model:visible="modalVisible" 
+    :header="note ? 'Editar Nota' : 'Nova Nota'"
+    :modal="true"
+    :breakpoints="{ '768px': '95vw' }"
+    :style="{ width: '600px' }"
+    :closable="true"
+    :closeOnEscape="true"
+    :dismissableMask="true"
+    class="note-modal"
+  >
+    <div class="modal-content">
+      <!-- Título -->
+      <div class="form-group">
+        <label for="title" class="form-label">
+          Título *
+          <span class="char-count">{{ title.length }}/200</span>
+        </label>
+        <PInputText
+          id="title"
+          v-model="title"
+          placeholder="Digite o título da nota"
+          :class="{ 'p-invalid': errors.title }"
+          maxlength="200"
+          class="w-full"
+        />
+        <small v-if="errors.title" class="p-error">{{ errors.title }}</small>
       </div>
       
-      <div class="modal-body">
+      <!-- Conteúdo -->
+      <div class="form-group">
+        <label for="content" class="form-label">
+          Conteúdo *
+          <span class="char-count">{{ content.length }}/1000</span>
+        </label>
+        <Textarea
+          id="content"
+          v-model="content"
+          @input="clearContentError"  
+          placeholder="Digite o conteúdo da nota"
+          :class="['w-full', { 'p-invalid': errors.content }]"
+          maxlength="1000"
+          rows="6"
+          autoResize
+        />
+        <small v-if="errors.content" class="p-error">{{ errors.content }}</small>
+      </div>
+      
+      <!-- Pasta e Tags -->
+      <div class="form-row">
         <div class="form-group">
-          <label for="title">
-            Título *
-            <span class="char-count">{{ title.length }}/200</span>
-          </label>
-          <input
-            id="title"
-            v-model="title"
-            type="text"
-            placeholder="Digite o título da nota"
-            :class="['input-field', { error: errors.title }]"
-            maxlength="200"
+          <label for="folder" class="form-label">Pasta (opcional)</label>
+          <PSelect
+            v-model="folder"
+            :options="folderOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Selecione uma pasta"
+            class="w-full"
           />
-          <span v-if="errors.title" class="error-message">{{ errors.title }}</span>
         </div>
         
         <div class="form-group">
-          <label for="content">
-            Conteúdo *
-            <span class="char-count">{{ content.length }}/1000</span>
-          </label>
-          <textarea
-            id="content"
-            v-model="content"
-            placeholder="Digite o conteúdo da nota"
-            :class="['textarea-field', { error: errors.content }]"
-            maxlength="1000"
-            rows="6"
-          ></textarea>
-          <span v-if="errors.content" class="error-message">{{ errors.content }}</span>
+          <label for="tags" class="form-label">Tags (separadas por vírgula)</label>
+          <PInputText
+            id="tags"
+            v-model="tags"
+            placeholder="ex: vue, typescript, api"
+            class="w-full"
+          />
         </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label for="folder">Pasta (opcional)</label>
-            <select id="folder" v-model="folder" class="select-field">
-              <option value="">Nenhuma</option>
-              <option value="Aprendendo">Aprendendo</option>
-              <option value="Projetos">Projetos</option>
-              <option value="Pessoal">Pessoal</option>
-              <option value="Trabalho">Trabalho</option>
-              <option value="Ideias">Ideias</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="tags">Tags (separadas por vírgula)</label>
-            <input
-              id="tags"
-              v-model="tags"
-              type="text"
-              placeholder="ex: vue, typescript, api"
-              class="input-field"
-            />
-          </div>
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button @click="handleCancel" class="btn-cancel">Cancelar</button>
-        <button @click="handleSubmit" class="btn-save">Salvar</button>
       </div>
     </div>
-  </div>
+    
+    <!-- Footer com Botões -->
+    <template #footer>
+      <PButton 
+        label="Cancelar" 
+        severity="secondary" 
+        @click="handleCancel"
+        outlined
+      />
+      <PButton 
+        label="Salvar" 
+        severity="success" 
+        @click="handleSubmit"
+        :loading="saving"
+      />
+    </template>
+  </PDialog>
 </template>
 
 <script setup lang="ts">
@@ -83,49 +101,72 @@ const props = defineProps<{
 
 const emit = defineEmits(['close', 'saved'])
 
+const modalVisible = ref(false)
 const title = ref('')
 const content = ref('')
 const folder = ref('')
 const tags = ref('')
 const errors = ref<any>({})
+const saving = ref(false)
 
+// Opções de pasta
+const folderOptions = [
+  { label: 'Nenhuma', value: '' },
+  { label: 'Aprendendo', value: 'Aprendendo' },
+  { label: 'Projetos', value: 'Projetos' },
+  { label: 'Pessoal', value: 'Pessoal' },
+  { label: 'Trabalho', value: 'Trabalho' },
+  { label: 'Ideias', value: 'Ideias' }
+]
+
+// Resetar formulário
 const resetForm = () => {
   title.value = ''
   content.value = ''
   folder.value = ''
   tags.value = ''
   errors.value = {}
+  saving.value = false
 }
 
+// Watch para sincronizar isOpen com modalVisible
 watch(() => props.isOpen, (newValue) => {
+  modalVisible.value = newValue
   if (newValue) {
     if (props.note) {
+      // Modo edição
       title.value = props.note.title || ''
       content.value = props.note.content || ''
       folder.value = props.note.folder || ''
       tags.value = props.note.tags?.join(', ') || ''
     } else {
+      // Modo criação
       resetForm()
     }
-  } else {
-    resetForm()
   }
 }, { immediate: true })
+
+watch(modalVisible, (newValue) => {
+  if (!newValue) {
+    emit('close')
+    resetForm()
+  }
+})
 
 const validateForm = () => {
   errors.value = {}
   
-  if (!title.value.trim()) {
-    errors.value.title = 'Título é obrigatório'
-  } else if (title.value.length < 3) {
+  // Título
+  if (!title.value || title.value.trim().length < 3) {
     errors.value.title = 'Título deve ter pelo menos 3 caracteres'
   } else if (title.value.length > 200) {
     errors.value.title = 'Título deve ter no máximo 200 caracteres'
   }
   
-  if (!content.value.trim()) {
+  // Conteúdo - VERIFICAR SE ESTÁ VAZIO OU MUITO CURTO
+  if (!content.value || content.value.trim().length === 0) {
     errors.value.content = 'Conteúdo é obrigatório'
-  } else if (content.value.length < 10) {
+  } else if (content.value.trim().length < 10) {
     errors.value.content = 'Conteúdo deve ter pelo menos 10 caracteres'
   } else if (content.value.length > 1000) {
     errors.value.content = 'Conteúdo deve ter no máximo 1000 caracteres'
@@ -136,6 +177,8 @@ const validateForm = () => {
 
 const handleSubmit = () => {
   if (!validateForm()) return
+  
+  saving.value = true
   
   const tagsArray = tags.value
     .split(',')
@@ -149,236 +192,173 @@ const handleSubmit = () => {
     tags: tagsArray,
     isPinned: false
   })
+  
+  saving.value = false
 }
 
 const handleCancel = () => {
-  emit('close')
+  modalVisible.value = false
+}
+
+const clearContentError = () => {
+  if (errors.value.content && content.value && content.value.trim().length >= 10) {
+    errors.value.content = ''
+  }
 }
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+.modal-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal {
-  background: var(--bg-secondary, #2d2d2d);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid var(--border-color, #404040);
-}
-
-.modal-header h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary, #ffffff);
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary, #a0a0a0);
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: var(--hover-bg, #3d3d3d);
-  color: var(--text-primary, #ffffff);
-}
-
-.modal-body {
-  padding: 24px;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .form-row {
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
-.form-row .form-group {
-  flex: 1;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary, #ffffff);
-  margin-bottom: 8px;
+.form-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
 }
 
 .char-count {
-  font-size: 12px;
-  color: var(--text-tertiary, #666666);
   font-weight: 400;
+  color: var(--text-tertiary);
   float: right;
+  font-size: 0.75rem;
 }
 
-.input-field,
-.textarea-field,
-.select-field {
+.w-full {
   width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border-color, #404040);
-  border-radius: 8px;
-  font-size: 14px;
-  background: var(--bg-primary, #1a1a1a);
-  color: var(--text-primary, #ffffff);
-  transition: all 0.2s;
-  font-family: inherit;
 }
 
-.input-field::placeholder,
-.textarea-field::placeholder {
-  color: var(--text-tertiary, #666666);
+:deep(.p-dialog) {
+  background: var(--bg-secondary);
 }
 
-.input-field.error,
-.textarea-field.error {
-  border-color: #dc2626;
+:deep(.p-dialog-header) {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.input-field:focus,
-.textarea-field:focus,
-.select-field:focus {
-  outline: none;
-  border-color: var(--accent-color, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+:deep(.p-dialog-content) {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
-.textarea-field {
-  resize: vertical;
-  min-height: 120px;
+:deep(.p-inputtext) {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
 }
 
-.select-field {
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
+:deep(.p-inputtext:focus) {
+  border-color: var(--accent-color);
 }
 
-.error-message {
-  display: block;
-  font-size: 12px;
-  color: #dc2626;
-  margin-top: 4px;
+:deep(.p-select) {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 24px;
-  border-top: 1px solid var(--border-color, #404040);
+:deep(.p-error) {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
 }
 
-.btn-cancel {
-  background: var(--bg-tertiary, #3d3d3d);
-  color: var(--text-primary, #ffffff);
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  background: var(--border-color, #404040);
-}
-
-.btn-save {
-  background: var(--accent-color, #3b82f6);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-save:hover {
-  background: var(--accent-hover, #2563eb);
-  transform: translateY(-1px);
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Mobile */
-@media (max-width: 640px) {
-  .modal {
-    width: 95%;
-    max-height: 95vh;
-  }
-  
-  .modal-body {
-    padding: 16px;
-  }
-  
+@media (max-width: 768px) {
   .form-row {
-    flex-direction: column;
-    gap: 0;
+    grid-template-columns: 1fr;
   }
+}
+:deep(.p-textarea),
+:deep(.custom-textarea),
+:deep(.custom-textarea-input) {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  padding: 0.75rem !important;
+  width: 100% !important;
+  min-height: 120px !important;
+  resize: vertical !important;
+  font-family: inherit !important;
+  transition: border-color 0.2s !important;
+}
+
+:deep(.p-textarea):focus,
+:deep(.custom-textarea):focus,
+:deep(.custom-textarea-input):focus {
+  border-color: var(--accent-color) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+:deep(.p-textarea)::placeholder,
+:deep(.custom-textarea)::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+:deep(.p-invalid) {
+  border-color: #dc2626 !important;
+}
+
+:deep(.p-dialog-content) {
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+}
+:deep(.p-textarea) {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  padding: 0.75rem !important;
+  min-height: 120px !important;
+  resize: vertical !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+:deep(.p-textarea):focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+  outline: none !important;
+}
+
+:deep(.p-textarea)::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+:deep(.p-invalid) {
+  border-color: #dc2626 !important;
+}
+
+:deep(.p-error) {
+  color: #dc2626 !important;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Ajustar altura do modal */
+:deep(.p-dialog-content) {
+  max-height: 70vh !important;
+  overflow-y: auto !important;
 }
 </style>

@@ -104,24 +104,16 @@ const closeModal = () => {
 
 <style scoped>
 .note-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);  
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
   transition: all 0.2s;
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  height: 280px;
-  max-height: 280px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .note-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-  border-color: var(--text-tertiary);
+  border-color: var(--accent-color);  
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .note-card.pinned {
@@ -238,7 +230,7 @@ const closeModal = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8); 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,20 +238,22 @@ const closeModal = () => {
   animation: fadeIn 0.2s ease;
 }
 
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 .modal-full {
-  background: var(--card-bg);
+  background: var(--bg-secondary); 
   border-radius: 12px;
   width: 90%;
   max-width: 700px;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   animation: slideUp 0.3s ease;
+  border: 1px solid var(--border-color); 
 }
 
 @keyframes slideUp {

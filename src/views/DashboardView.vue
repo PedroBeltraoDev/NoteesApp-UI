@@ -3,6 +3,7 @@
     <Topbar @search="handleSearch" @createNote="handleCreateNote" />
     
     <div class="main-container">
+      <!-- Sidebar -->
       <Sidebar 
         ref="sidebarRef"
         :folders="folders"
@@ -12,8 +13,10 @@
         @selectFolder="selectFolder" 
         @selectTag="selectTag"
         @clearFilters="clearFilters"
+        v-model:mobileOpen="isMobileMenuOpen"
       />
       
+      <!-- Conteúdo Principal -->
       <main class="content">
         <div class="workspace-header">
           <div class="header-left">
@@ -64,6 +67,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 import { api } from '@/services/api'
+import { useToast } from 'primevue/usetoast'
 
 // DECLARAÇÕES
 const notes = ref<any[]>([])
@@ -76,6 +80,8 @@ const searchQuery = ref('')
 const selectedFolder = ref<string | null>(null)
 const selectedTag = ref<string | null>(null)
 const sidebarRef = ref<any>(null)
+const toast = useToast()
+const isMobileMenuOpen = ref(false)
 
 // COMPUTED
 const activeFilter = computed(() => {
@@ -145,6 +151,7 @@ const clearFilters = () => {
   loadNotes()
 }
 
+
 const handleCreateNote = () => {
   editingNote.value = null 
   isModalOpen.value = true
@@ -159,10 +166,21 @@ const handleDeleteNote = async (id: number) => {
   if (confirm('Tem certeza que deseja excluir esta nota?')) {
     try {
       await api.deleteNote(id)
+      toast.add({
+        severity: 'success',
+        summary: 'Excluído!',
+        detail: 'Nota excluída com sucesso!',
+        life: 3000
+      })
       await loadNotes()
     } catch (error: any) {
       console.error('Erro ao excluir nota:', error)
-      alert('Erro ao excluir nota')
+      toast.add({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao excluir nota',
+        life: 5000
+      })
     }
   }
 }
@@ -172,9 +190,21 @@ const handleTogglePin = async (id: number) => {
   if (note) {
     try {
       await api.updateNote({ ...note, isPinned: !note.isPinned })
+      toast.add({
+        severity: 'info',
+        summary: 'Atualizado!',
+        detail: note.isPinned ? 'Nota desfixada' : 'Nota fixada',
+        life: 3000
+      })
       await loadNotes()
     } catch (error: any) {
       console.error('Erro ao atualizar nota:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao atualizar nota',
+        life: 5000
+      })
     }
   }
 }
@@ -183,16 +213,32 @@ const saveNote = async (noteData: any) => {
   try {
     if (editingNote.value) {
       await api.updateNote({ ...noteData, id: editingNote.value.id })
+      toast.add({
+        severity: 'success',
+        summary: 'Sucesso!',
+        detail: 'Nota atualizada com sucesso!',
+        life: 3000
+      })
     } else {
       await api.createNote(noteData)
+      toast.add({
+        severity: 'success',
+        summary: 'Sucesso!',
+        detail: 'Nota criada com sucesso!',
+        life: 3000
+      })
     }
 
     await Promise.all([loadNotes(), loadTags()])
-
     closeModal()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
-    alert(error.message || 'Erro ao salvar nota. Tente novamente.')
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: error.message || 'Erro ao salvar nota. Tente novamente.',
+      life: 5000
+    })
   }
 }
 
@@ -242,11 +288,13 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   min-height: calc(100vh - 73px);
+  position: relative;
 }
 
 .content {
   flex: 1;
-  padding: 24px 16px;
+  margin-left: 280px; 
+  padding: 24px 24px;
   overflow-y: auto;
   background: var(--bg-primary);
   min-height: calc(100vh - 73px);
@@ -257,13 +305,8 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   margin-bottom: 24px;
-}
-
-.header-left {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .workspace-title {
@@ -284,6 +327,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-weight: 500;
+  animation: fadeIn var(--transition-fast);
 }
 
 .clear-filter {
@@ -295,6 +339,11 @@ onUnmounted(() => {
   border-radius: 50%;
   cursor: pointer;
   font-size: 11px;
+  transition: background var(--transition-fast);
+}
+
+.clear-filter:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .loading {
@@ -323,6 +372,7 @@ onUnmounted(() => {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
+  animation: fadeIn var(--transition-normal);
 }
 
 .empty-state h2 {
@@ -345,14 +395,6 @@ onUnmounted(() => {
 
 /* Tablet */
 @media (min-width: 641px) {
-  .content {
-    padding: 32px 24px;
-  }
-  
-  .workspace-title {
-    font-size: 28px;
-  }
-  
   .notes-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
@@ -360,25 +402,9 @@ onUnmounted(() => {
 }
 
 /* Desktop */
-@media (min-width: 769px) {
-  .main-container {
-    min-height: calc(100vh - 73px);
-  }
-  
+@media (min-width: 1025px) {
   .content {
-    padding: 40px;
-    min-height: calc(100vh - 73px);
-  }
-  
-  .workspace-header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 40px;
-  }
-  
-  .workspace-title {
-    font-size: 32px;
+    padding: 32px 32px;
   }
   
   .notes-grid {
@@ -388,9 +414,29 @@ onUnmounted(() => {
 }
 
 /* Large Desktop */
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   .notes-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Mobile - sidebar escondida */
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    padding: 16px 16px;
+  }
+  
+  .notes-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0; /* ✅ Sem margem no mobile */
+    padding: 16px 16px;
   }
 }
 </style>

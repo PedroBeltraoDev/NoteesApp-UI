@@ -1,0 +1,6 @@
+/* IMPORT ALL STYLES */
+
+@import './variables.css';
+@import './global.css';
+@import './animations.css';
+@import './primevue-overrides.css';

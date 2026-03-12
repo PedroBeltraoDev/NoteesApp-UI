@@ -1,0 +1,116 @@
+/* PRIME VUE OVERRIDES - DARK MODE */
+
+/* Inputs */
+body.dark-mode .p-inputtext,
+body.dark-mode .p-textarea,
+body.dark-mode .p-select {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+body.dark-mode .p-inputtext:focus,
+body.dark-mode .p-textarea:focus,
+body.dark-mode .p-select:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+}
+
+body.dark-mode .p-inputtext::placeholder,
+body.dark-mode .p-textarea::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* Buttons */
+body.dark-mode .p-button {
+  transition: all var(--transition-fast);
+}
+
+body.dark-mode .p-button:not(.p-button-secondary):not(.p-button-text):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+body.dark-mode .p-button.p-button-text {
+  color: var(--text-secondary) !important;
+}
+
+body.dark-mode .p-button.p-button-text:hover {
+  color: var(--text-primary) !important;
+  background: var(--hover-bg) !important;
+}
+
+/* Dialog/Modal */
+body.dark-mode .p-dialog {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+body.dark-mode .p-dialog-header {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .p-dialog-content {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Toast */
+body.dark-mode .p-toast-message {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-left: 4px solid var(--accent-color) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+body.dark-mode .p-toast-summary {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+body.dark-mode .p-toast-detail {
+  color: var(--text-secondary) !important;
+}
+
+/* Drawer/Sidebar */
+body.dark-mode .p-drawer {
+  background: var(--bg-secondary) !important;
+  border: none !important;
+}
+
+body.dark-mode .p-drawer-header {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+body.dark-mode .p-drawer-content {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Divider */
+body.dark-mode .p-divider {
+  border-color: var(--border-color) !important;
+}
+
+/* Panel/Card */
+body.dark-mode .p-card {
+  background: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+body.dark-mode .p-card-title {
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .p-card-content {
+  color: var(--text-secondary) !important;
+}

@@ -4,42 +4,81 @@
       <div class="topbar-left">
         <button @click="toggleMobileMenu" class="menu-btn">☰</button>
         <h1 class="logo" @click="$router.push('/')">NoteesApp</h1>
-        <nav class="desktop-nav">
-          <router-link to="/" class="nav-link">Início</router-link>
-          <router-link to="/configuracoes" class="nav-link">Configurações</router-link>
-        </nav>
       </div>
       
       <div class="topbar-right">
         <div class="search-container">
-          <input 
+          <PInputText
             v-model="searchQuery"
             @input="handleSearch"
-            type="text" 
             placeholder="Buscar notas..."
             class="search-input"
           />
         </div>
         
-        <button @click="$emit('createNote')" class="btn-new-note">
-          <span class="btn-text">Nova Nota</span>
-          <span class="btn-icon">+</span>
-        </button>
+        <PButton 
+          @click="toggleDarkMode" 
+          :icon="isDarkMode ? 'pi pi-sun' : 'pi pi-moon'"
+          text 
+          severity="secondary"
+          class="btn-theme"
+          :pt="{
+            root: { style: { width: '40px', height: '40px' } }
+          }"
+        />
         
-        <button @click="handleLogout" class="btn-logout" title="Sair">
-          🔓
-        </button>
+        <PButton 
+          @click="$emit('createNote')" 
+          label="Nova Nota" 
+          icon="pi pi-plus"
+          severity="success"
+          class="btn-new-note"
+        />
+        
+        <PButton 
+          @click="handleLogout" 
+          icon="pi pi-sign-out"
+          text 
+          severity="secondary"
+          class="btn-logout"
+        />
       </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const searchQuery = ref('')
+const isDarkMode = ref(true)
+
+onMounted(() => {
+  // Verificar tema salvo
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme) {
+    isDarkMode.value = savedTheme === 'dark'
+    applyTheme()
+  }
+})
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+  applyTheme()
+}
+
+const applyTheme = () => {
+  if (isDarkMode.value) {
+    document.body.classList.add('dark-mode')
+    document.body.classList.remove('light-mode')
+  } else {
+    document.body.classList.remove('dark-mode')
+    document.body.classList.add('light-mode')
+  }
+}
 
 const emit = defineEmits(['createNote', 'search'])
 
@@ -64,14 +103,15 @@ const handleLogout = () => {
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
-  z-index: 100;
-  box-shadow: var(--shadow-sm);
+  z-index: 100; 
+  width: 100%;
 }
 
 .topbar-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 16px 20px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 16px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -82,6 +122,7 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .menu-btn {
@@ -93,7 +134,7 @@ const handleLogout = () => {
   cursor: pointer;
   padding: 8px;
   border-radius: 6px;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .menu-btn:hover {
@@ -101,147 +142,111 @@ const handleLogout = () => {
 }
 
 .logo {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   cursor: pointer;
   margin: 0;
   letter-spacing: -0.5px;
-}
-
-.desktop-nav {
-  display: none;
-  gap: 8px;
-}
-
-.nav-link {
-  padding: 8px 16px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.nav-link:hover,
-.nav-link.router-link-active {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .search-container {
   position: relative;
-  flex: 1;
-  max-width: 300px;
+  flex: 0 1 400px; 
+  max-width: 400px;
 }
 
-.search-input {
+.search-container :deep(.p-inputtext) {
   width: 100%;
-  padding: 10px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  height: 40px;
   background: var(--bg-primary);
+  border-color: var(--border-color);
   color: var(--text-primary);
-  font-size: 14px;
-  transition: all 0.2s;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+.btn-theme :deep(.p-button) {
+  width: 40px;
+  height: 40px;
 }
 
-.btn-new-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+.btn-new-note :deep(.p-button) {
+  height: 40px;
+  padding: 0 20px;
 }
 
-.btn-new-note:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
+.btn-logout :deep(.p-button) {
+  width: 40px;
+  height: 40px;
 }
 
-.btn-text {
-  display: none;
-}
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
 
-.btn-icon {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.btn-logout {
-  background: var(--bg-tertiary);
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
-}
-
-.btn-logout:hover {
-  background: var(--hover-bg);
-}
-
-/* Desktop */
+/* Desktop (padrão) */
 @media (min-width: 769px) {
   .menu-btn {
-    display: none;
+    display: none; 
   }
-  
-  .desktop-nav {
-    display: flex;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .topbar-container {
+    padding: 16px 20px;
   }
   
   .search-container {
-    max-width: 400px;
-  }
-  
-  .btn-text {
-    display: inline;
-  }
-  
-  .btn-icon {
-    display: none;
+    flex: 0 1 300px;
+    max-width: 300px;
   }
 }
 
 /* Mobile */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .menu-btn {
+    display: block; 
+  }
+  
+  .search-container {
+    display: none; 
+  }
+  
+  .logo {
+    font-size: 20px;
+  }
+  
+  .btn-new-note :deep(.p-button-label) {
+    display: none; 
+  }
+  
   .topbar-container {
     padding: 12px 16px;
+  }
+}
+
+/* Mobile pequeno */
+@media (max-width: 480px) {
+  .topbar-container {
+    padding: 12px;
+    gap: 8px;
   }
   
   .logo {
     font-size: 18px;
   }
   
-  .search-container {
-    display: none;
-  }
-  
-  .btn-new-note {
-    padding: 8px 12px;
+  .btn-logout {
+    display: none; 
   }
 }
 </style>
