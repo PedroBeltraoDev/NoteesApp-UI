@@ -6,7 +6,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 
-
 onMounted(() => {
   const savedTheme = localStorage.getItem('noteesapp-theme')
   if (savedTheme === 'light') {
@@ -18,5 +17,3 @@ onMounted(() => {
   }
 })
 </script>
-
-
