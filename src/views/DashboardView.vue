@@ -435,7 +435,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .content {
-    margin-left: 0; /* ✅ Sem margem no mobile */
+    margin-left: 0;
     padding: 16px 16px;
   }
 }

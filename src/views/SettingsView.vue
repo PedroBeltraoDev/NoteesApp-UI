@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import router from '../router'  // ✅ Apenas isso!
+import router from '../router'
 
 const isDarkMode = ref(false)
 

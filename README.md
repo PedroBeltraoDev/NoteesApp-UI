@@ -15,15 +15,6 @@ Este projeto foi criado como **projeto de portfólio** para demonstrar habilidad
 
 ---
 
-# 🔗 Links do Projeto
-
-| Recurso | Link |
-|------|------|
-| Frontend (GitHub) | https://github.com/PedroBeltraoDev/NoteesApp-UI |
-| Aplicação em Produção | https://notees-app-ui.vercel.app |
-| Backend API | https://noteesapp-be.onrender.com/api |
-
----
 # 🚀 Tecnologias Utilizadas
 
 | Categoria | Tecnologia |
