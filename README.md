@@ -1,303 +1,355 @@
-# 📝 NoteesApp UI
+# 📝 NoteesApp - Frontend
 
-![Vue](https://img.shields.io/badge/Vue-3-42b883)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![Vite](https://img.shields.io/badge/Vite-Frontend-purple)
-![Deploy](https://img.shields.io/badge/Deploy-Vercel-black)
-![API](https://img.shields.io/badge/API-Render-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+Aplicação web moderna para gerenciamento de notas com organização por pastas e tags, desenvolvida com Vue 3, PrimeVue e TypeScript.
 
-Interface moderna e responsiva para **gerenciamento de notas**, permitindo organização por **pastas**, **tags**, **busca em tempo real** e **fixação de notas importantes**.
+[![Status](https://img.shields.io/badge/status-production-success)](https://notees-app.vercel.app)
+[![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Vercel](https://img.shields.io/badge/deploy-Vercel-black?logo=vercel)](https://vercel.com/)
 
-O projeto foi desenvolvido utilizando **Vue 3 (Composition API)**, **TypeScript** e **Vite**, seguindo boas práticas de arquitetura frontend, componentização e design responsivo **mobile-first**.
+## 📋 Índice
 
-Este projeto foi criado como **projeto de portfólio** para demonstrar habilidades em **Frontend moderno**, integração com APIs REST e construção de interfaces escaláveis.
+- [Funcionalidades](#-funcionalidades)
+- [Tecnologias](#-tecnologias)
+- [Arquitetura](#-arquitetura)
+- [Como Rodar Localmente](#-como-rodar-localmente)
+- [Testes](#-testes)
+- [Deploy](#-deploy)
+- [Responsividade](#-responsividade)
 
 ---
 
-# 🚀 Tecnologias Utilizadas
+## ✨ Funcionalidades
+
+- ✅ **CRUD Completo** de notas
+- ✅ **Organização por Pastas** e Tags
+- ✅ **Notas Fixadas** (pin/unpin)
+- ✅ **Busca em Tempo Real** com debounce
+- ✅ **Filtros** por pasta e tag
+- ✅ **Tema Escuro/Claro** (persistente)
+- ✅ **Design Responsivo** (Mobile, Tablet, Desktop)
+- ✅ **Modal de Visualização** completa da nota
+- ✅ **Skeleton Loading** para melhor UX
+- ✅ **Toast Notifications** para feedback
+- ✅ **Autenticação Simples** (senha)
+- ✅ **Ícones PrimeIcons** (sem emojis)
+- ✅ **Testes Unitários** com Vitest
+
+---
+
+## 🛠 Tecnologias
 
 | Categoria | Tecnologia |
-|---|---|
-| Framework | Vue 3 (Composition API) |
-| Linguagem | TypeScript |
-| Build Tool | Vite |
-| Roteamento | Vue Router |
-| Comunicação API | Fetch API |
-| Estilização | CSS Variables |
-| Design | Mobile-first + Responsive |
-| Deploy | Vercel |
-| Backend | NoteesApp API (.NET) |
+|-----------|------------|
+| **Framework** | Vue 3.5 (Composition API) |
+| **Linguagem** | TypeScript 5.8 |
+| **UI Library** | PrimeVue 4 + PrimeIcons |
+| **Theme** | @primeuix/themes (Aura) |
+| **HTTP Client** | Axios |
+| **Router** | Vue Router 4 |
+| **Build Tool** | Vite 6 |
+| **Testes** | Vitest, Vue Test Utils, jsdom |
+| **Deploy** | Vercel (Edge Network) |
+| **CSS** | CSS Variables + Scoped CSS |
 
 ---
 
-# 🏗️ Arquitetura
-
-A aplicação segue uma arquitetura baseada em **camadas de responsabilidade**, facilitando manutenção, escalabilidade e organização do código.
+## 🏗 Arquitetura
 
 ```
-Views
-  │
-  ▼
-Components
-  │
-  ▼
-Services
-  │
-  ▼
-API
+┌─────────────────────────────────────────────────────────────┐
+│                    NoteesApp Frontend                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐  │
+│  │   Views     │ → │ Components  │ → │    Services     │  │
+│  │  (Pages)    │   │   (UI)      │   │   (API Calls)   │  │
+│  └─────────────┘   └─────────────┘   └────────┬────────┘  │
+│                                               │            │
+│                                        ┌──────▼──────┐    │
+│                                        │   Backend   │    │
+│                                        │   (Render)  │    │
+│                                        └─────────────┘    │
+│                                                             │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐  │
+│  │   Router    │   │   Styles    │   │      Utils      │  │
+│  │   (Vue)     │   │  (CSS Vars) │   │  (Debounce,etc) │  │
+│  └─────────────┘   └─────────────┘   └─────────────────┘  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
+### Estrutura de Pastas
 
-# 📊 Diagrama de Arquitetura
-
-```mermaid
-flowchart TD
-
-A[Views]
-B[Components]
-C[Services]
-D[API Backend]
-
-A --> B
-B --> C
-C --> D
 ```
-
----
-
-# 📁 Estrutura do Projeto
-
-```text
-src
-│
-├── components
-│   ├── layout
+src/
+├── components/
+│   ├── layout/
 │   │   ├── Topbar.vue
 │   │   └── Sidebar.vue
-│   │
-│   └── notes
+│   └── notes/
 │       ├── NoteCard.vue
 │       ├── NoteFormModal.vue
-│       └── NotesGrid.vue
-│
-├── views
-│   ├── LoginView.vue
+│       └── NoteCardSkeleton.vue
+├── views/
 │   ├── DashboardView.vue
+│   ├── LoginView.vue
 │   └── SettingsView.vue
-│
-├── services
+├── services/
 │   └── api.ts
-│
-├── router
+├── router/
 │   └── index.ts
-│
-├── middleware
-│   └── auth.ts
-│
-├── assets
-│   └── styles
-│
-├── App.vue
-└── main.ts
-
-public/
-
-.env.local
-.env.production
-
-package.json
-vite.config.ts
-tsconfig.json
-vercel.json
+├── styles/
+│   ├── variables.css
+│   ├── global.css
+│   └── primevue-overrides.css
+├── utils/
+│   └── debounce.ts
+├── tests/
+│   └── components/
+│       ├── NoteCard.spec.ts
+│       ├── Sidebar.spec.ts
+│       └── Topbar.spec.ts
+└── App.vue
 ```
 
 ---
 
-# ✨ Funcionalidades
+## 🚀 Como Rodar Localmente
 
-| Feature | Descrição |
-|---|---|
-| CRUD de Notas | Criar, editar, excluir e visualizar notas |
-| Pastas | Organização de notas por pastas |
-| Tags | Classificação de notas por tags |
-| Busca em tempo real | Filtragem instantânea |
-| Fixar notas | Destacar notas importantes |
-| Filtros | Ordenação e filtragem |
-| Design Responsivo | Mobile-first |
-| Login simples | Autenticação por senha |
-| Dark Theme | Interface escura moderna |
-| Loading States | Feedback visual durante requisições |
-| Confirmação de exclusão | Evita exclusões acidentais |
-| Validação de formulários | Inputs validados |
-| Mensagens de erro | Feedback amigável |
-| Empty states | Estados quando não há notas |
+### Pré-requisitos
 
----
+- Node.js 20+
+- npm ou yarn
+- Git
 
-# 🔐 Autenticação
+### Passos
 
-A aplicação utiliza um **sistema simples de autenticação por senha** configurado via variável de ambiente.
+```bash
+# 1. Clonar repositório
+git clone https://github.com/PedroBeltraoDev/NoteesApp-UI.git
+cd notis-app
 
-### Funcionamento
+# 2. Instalar dependências
+npm install
 
-- Usuário insere senha na tela de login
-- A senha é validada no frontend
-- Sessão é armazenada no **localStorage**
-- Sessão expira em **24 horas**
-- Rotas protegidas utilizam **Route Guards**
+# 3. Copiar variáveis de ambiente
+cp .env.example .env.local
 
-### Segurança implementada
+# 4. Configurar variáveis no .env.local
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_APP_PASSWORD=1234
 
-| Recurso | Descrição |
-|---|---|
-| Route Guard | Protege páginas internas |
-| localStorage | Armazena sessão temporária |
-| Logout | Limpeza completa da sessão |
+# 5. Rodar em desenvolvimento
+npm run dev
 
----
+# 6. Acessar
+http://localhost:5173
+```
 
-# 📱 Design Responsivo
+### Scripts Disponíveis
 
-A interface foi construída utilizando **Mobile First Design**.
+```bash
+# Desenvolvimento
+npm run dev
 
-| Dispositivo | Layout |
-|---|---|
-| Mobile (<640px) | Menu hamburguer, 1 coluna |
-| Tablet (641–768px) | Menu hamburguer, 2 colunas |
-| Desktop (>769px) | Sidebar fixa, 3 colunas |
-| Large (>1200px) | Sidebar fixa, 4 colunas |
+# Build de produção
+npm run build
 
-Modal behavior:
+# Preview do build
+npm run preview
 
-| Tela | Modal |
-|---|---|
-| Mobile | Bottom modal fullscreen |
-| Tablet | Modal centralizado |
-| Desktop | Modal centralizado |
+# Testes (watch mode)
+npm run test
+
+# Testes (uma vez)
+npm run test:run
+
+# Testes com coverage
+npm run test:coverage
+
+# Type check
+npm run type-check
+```
 
 ---
 
-# 🎨 Design System
+## 🧪 Testes
 
-A interface utiliza **CSS Variables** para manter consistência visual e facilitar manutenção.
+### Rodar Testes
 
-## Cores
+```bash
+# Todos os testes (watch mode)
+npm run test
+
+# Rodar uma vez e sair
+npm run test:run
+
+# Com relatório de coverage
+npm run test:coverage
+
+# Interface visual
+npm run test:ui
+```
+### Exemplo de Teste
+
+```typescript
+// src/tests/components/NoteCard.spec.ts
+import { mount } from '@vue/test-utils'
+import NoteCard from '@/components/notes/NoteCard.vue'
+
+describe('NoteCard', () => {
+  it('renders note title correctly', () => {
+    const wrapper = mount(NoteCard, {
+      props: { 
+        note: { 
+          id: 1, 
+          title: 'Nota de Teste',
+          content: 'Conteúdo...',
+          createdAt: '2024-01-15',
+          isPinned: false 
+        } 
+      }
+    })
+    
+    expect(wrapper.text()).toContain('Nota de Teste')
+  })
+
+  it('emits delete event when delete button is clicked', async () => {
+    const wrapper = mount(NoteCard, {
+      props: { note: mockNote }
+    })
+    
+    await wrapper.find('.action-btn.delete').trigger('click')
+    expect(wrapper.emitted('delete')).toBeTruthy()
+  })
+})
+```
+
+---
+
+## 🌐 Deploy
+
+### Vercel (Frontend)
+
+```yaml
+# vercel.json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "regions": ["iad1"],
+  "env": {
+    "VITE_API_BASE_URL": "https://noteesapp-be.onrender.com/api"
+  }
+}
+```
+
+### Edge Network
+
+A Vercel usa **Edge Network global** com PoPs em São Paulo, garantindo baixa latência para usuários brasileiros.
+
+| Região | Latência |
+|--------|----------|
+| São Paulo (GRU) | ~20ms |
+| Miami (MIA) | ~150ms |
+| Frankfurt (FRA) | ~200ms |
+
+---
+
+## 📱 Responsividade
+
+### Breakpoints
+
+| Device | Width | Layout |
+|--------|-------|--------|
+| Mobile | < 768px | 1 coluna, sidebar drawer |
+| Tablet | 768px - 1024px | 2 colunas, sidebar reduzida |
+| Desktop | > 1024px | 3 colunas, sidebar completa |
+| Large | > 1400px | 4 colunas |
+
+### Features Mobile
+
+- ✅ Menu hamburger com drawer
+- ✅ Touch-friendly buttons (min 44px)
+- ✅ Search input oculto (economiza espaço)
+- ✅ Grid de notas com 1 coluna
+- ✅ Modal full-screen
+
+---
+
+## 🎨 Design System
+
+### Cores (CSS Variables)
 
 ```css
 :root {
+  /* Light Mode */
+  --bg-primary: #f8f7f4;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-color: #e0e0e0;
+  --accent-color: #3b82f6;
+  --hover-bg: #f5f5f5;
+}
+
+.dark-mode {
+  /* Dark Mode */
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d2d;
   --bg-tertiary: #3d3d3d;
-
   --text-primary: #ffffff;
-  --text-secondary: #a0a0a0;
-  --text-tertiary: #666666;
-
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-
-  --border-color: #404040;
-
-  --success-color: #10b981;
-  --error-color: #dc2626;
-  --warning-color: #f59e0b;
+  --text-secondary: #cccccc;
+  --text-tertiary: #888888;
+  --border-color: #444444;
+  --accent-color: #60a5fa;
+  --hover-bg: #3d3d3d;
 }
 ```
 
----
+## 🔒 Segurança
 
-# 📐 Breakpoints
+### Medidas Implementadas
 
-A aplicação segue **Mobile First**, expandindo o layout conforme o tamanho da tela.
-
-```css
-/* Mobile (default) */
-
-@media (min-width: 641px) {
-  /* Tablet Small */
-}
-
-@media (min-width: 769px) {
-  /* Desktop */
-}
-
-@media (min-width: 1200px) {
-  /* Large Desktop */
-}
-```
+| Medida | Descrição |
+|--------|-----------|
+| **Autenticação** | Senha simples (localStorage) |
+| **CORS** | Apenas backend autorizado |
+| **XSS Protection** | Vue auto-escapes conteúdo |
+| **HTTPS** | Forçado na Vercel |
+| **Environment Variables** | Credenciais no .env.local |
 
 ---
 
-# ⚙️ Instalação
+## 🤝 Contribuindo
 
-Clone o projeto:
-
-```bash
-git clone https://github.com/PedroBeltraoDev/NoteesApp-UI.git
-```
-
-Entre na pasta do projeto:
-
-```bash
-cd notees-app
-```
-
-Instale as dependências:
-
-```bash
-npm install
-```
-
-Copie o arquivo de ambiente:
-
-```bash
-cp .env.example .env.local
-```
-
-Inicie o servidor de desenvolvimento:
-
-```bash
-npm run dev
-```
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
 ---
 
-# 🤝 Como Contribuir
-
-1. Faça um **fork** do projeto  
-2. Crie uma branch
-
-```bash
-git checkout -b feature/minha-feature
-```
-
-3. Faça commit das alterações
-
-```bash
-git commit -m "feat: minha nova feature"
-```
-
-4. Envie para o GitHub
-
-```bash
-git push origin feature/minha-feature
-```
-
-5. Abra um **Pull Request**
-
----
-
-# 📄 Licença
-
-Este projeto está licenciado sob a **MIT License**.
-
----
-
-# 👨‍💻 Autor
+## 👨‍💻 Autor
 
 **Pedro Beltrão**
 
-GitHub  
-https://github.com/PedroBeltraoDev
+- GitHub: [@PedroBeltraoDev](https://github.com/PedroBeltraoDev)
+- LinkedIn: [pedro-beltrao](https://www.linkedin.com/in/pedro-beltr%C3%A3o123/)
+- Email: pedrobeltrao.dev@gmail.com
+
+---
+
+<div align="center">
+
+**Feito por Pedro Beltrão**
+
+[⬆ Voltar ao topo](#-noteesapp---frontend)
+
+</div>
