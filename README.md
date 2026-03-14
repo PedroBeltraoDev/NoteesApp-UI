@@ -2,7 +2,6 @@
 
 Aplicação web moderna para gerenciamento de notas com organização por pastas e tags, desenvolvida com Vue 3, PrimeVue e TypeScript.
 
-[![Status](https://img.shields.io/badge/status-production-success)](https://notees-app.vercel.app)
 [![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Vercel](https://img.shields.io/badge/deploy-Vercel-black?logo=vercel)](https://vercel.com/)
@@ -61,20 +60,20 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 │                    NoteesApp Frontend                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐  │
-│  │   Views     │ → │ Components  │ → │    Services     │  │
-│  │  (Pages)    │   │   (UI)      │   │   (API Calls)   │  │
-│  └─────────────┘   └─────────────┘   └────────┬────────┘  │
-│                                               │            │
-│                                        ┌──────▼──────┐    │
-│                                        │   Backend   │    │
-│                                        │   (Render)  │    │
-│                                        └─────────────┘    │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐    │
+│  │   Views     │ → │ Components  │ → │    Services     │    │
+│  │  (Pages)    │   │   (UI)      │   │   (API Calls)   │    │
+│  └─────────────┘   └─────────────┘   └────────┬────────┘    │
+│                                               │             │
+│                                        ┌──────▼──────┐      │
+│                                        │   Backend   │      │
+│                                        │   (Render)  │      │
+│                                        └─────────────┘      │
 │                                                             │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐  │
-│  │   Router    │   │   Styles    │   │      Utils      │  │
-│  │   (Vue)     │   │  (CSS Vars) │   │  (Debounce,etc) │  │
-│  └─────────────┘   └─────────────┘   └─────────────────┘  │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐    │
+│  │   Router    │   │   Styles    │   │      Utils      │    │
+│  │   (Vue)     │   │  (CSS Vars) │   │  (Debounce,etc) │    │
+│  └─────────────┘   └─────────────┘   └─────────────────┘    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
