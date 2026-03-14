@@ -23,7 +23,9 @@
             <h2 class="workspace-title">Minhas Notas</h2>
             <span v-if="activeFilter" class="active-filter">
               Filtrando por: {{ activeFilter }}
-              <button @click="clearFilters" class="clear-filter">✕</button>
+              <button @click="clearFilters" class="clear-filter">
+                <i class="pi pi-times"></i>
+              </button>
             </span>
           </div>
         </div>
@@ -34,7 +36,9 @@
         </div>
         
         <div v-else-if="notes.length === 0" class="empty-state">
-          <h2>📝 Nenhuma nota ainda</h2>
+          <h2>
+            <i class="pi pi-file-edit"></i> Nenhuma nota ainda
+          </h2>
           <p>Clique em "Nova Nota" para criar sua primeira nota!</p>
         </div>
         
@@ -340,6 +344,13 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 11px;
   transition: background var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-filter .pi-times {
+  font-size: 12px;
 }
 
 .clear-filter:hover {
@@ -380,6 +391,15 @@ onUnmounted(() => {
   margin-bottom: 8px;
   color: var(--text-primary);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.empty-state h2 .pi-file-edit {
+  font-size: 24px;
+  color: var(--accent-color);
 }
 
 .empty-state p {

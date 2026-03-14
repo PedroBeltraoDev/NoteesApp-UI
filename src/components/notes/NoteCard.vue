@@ -2,7 +2,9 @@
   <div class="note-card" :class="{ pinned: note.isPinned }" @click="openFullNote">
     <div class="note-header" @click.stop>
       <h3 class="note-title">{{ note.title }}</h3>
-      <span v-if="note.isPinned" class="pin-badge">📌 Fixada</span>
+      <span v-if="note.isPinned" class="pin-badge">
+        <i class="pi pi-thumbtack"></i> Fixada
+      </span>
     </div>
     
     <p class="note-content" :title="note.content">
@@ -20,13 +22,13 @@
       <span class="note-date">{{ formatDate(note.createdAt) }}</span>
       <div class="note-actions">
         <button @click="$emit('edit', note)" class="action-btn" title="Editar">
-          ✏️ Editar
+          <i class="pi pi-pencil"></i> Editar
         </button>
         <button @click="$emit('togglePin', note.id)" class="action-btn" :title="note.isPinned ? 'Desfixar' : 'Fixar'">
-          {{ note.isPinned ? '📌 Desfixar' : '📌 Fixar' }}
+          <i class="pi pi-thumbtack"></i> {{ note.isPinned ? 'Desfixar' : 'Fixar' }}
         </button>
         <button @click="$emit('delete', note.id)" class="action-btn delete" title="Excluir">
-          🗑️ Excluir
+          <i class="pi pi-trash"></i> Excluir
         </button>
       </div>
     </div>
@@ -37,7 +39,9 @@
     <div class="modal-full" @click.stop>
       <div class="modal-header">
         <h2>{{ note.title }}</h2>
-        <button @click="closeModal" class="close-btn">✕</button>
+        <button @click="closeModal" class="close-btn">
+          <i class="pi pi-times"></i>
+        </button>
       </div>
       <div class="modal-body">
         <div class="note-full-content">
@@ -50,7 +54,9 @@
         </div>
         <div class="note-full-footer">
           <span class="note-date">{{ formatDate(note.createdAt) }}</span>
-          <span v-if="note.folder" class="note-folder">📁 {{ note.folder }}</span>
+          <span v-if="note.folder" class="note-folder">
+            <i class="pi pi-folder"></i> {{ note.folder }}
+          </span>
         </div>
       </div>
     </div>
@@ -144,6 +150,13 @@ const closeModal = () => {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pin-badge .pi-thumbtack {
+  font-size: 12px;
 }
 
 .note-content {
@@ -210,6 +223,13 @@ const closeModal = () => {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn .pi {
+  font-size: 14px;
 }
 
 .action-btn:hover {
@@ -236,7 +256,6 @@ const closeModal = () => {
   z-index: 2000;
   animation: fadeIn 0.2s ease;
 }
-
 
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -288,7 +307,6 @@ const closeModal = () => {
 .modal-full .close-btn {
   background: none;
   border: none;
-  font-size: 28px;
   color: var(--text-secondary);
   cursor: pointer;
   width: 36px;
@@ -298,6 +316,7 @@ const closeModal = () => {
   justify-content: center;
   border-radius: 6px;
   transition: all 0.2s;
+  font-size: 20px;
 }
 
 .modal-full .close-btn:hover {
@@ -343,5 +362,12 @@ const closeModal = () => {
   padding: 6px 12px;
   border-radius: 6px;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-folder .pi-folder {
+  font-size: 14px;
 }
 </style>

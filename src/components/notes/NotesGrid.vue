@@ -19,7 +19,6 @@
 import { defineProps, defineEmits } from 'vue'
 import NoteCard from './NoteCard.vue'
 
-// Defina as props
 defineProps({
   notes: {
     type: Array,
@@ -36,10 +35,8 @@ defineProps({
   }
 })
 
-// Defina os emits
 defineEmits(['edit', 'delete', 'togglePin'])
 
-// Crie um computed para filtrar as notas
 const filteredNotes = computed(() => {
   if (!selectedFolder && !selectedTag) {
     return notes.value

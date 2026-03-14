@@ -2,7 +2,9 @@
   <header class="topbar">
     <div class="topbar-container">
       <div class="topbar-left">
-        <button @click="toggleMobileMenu" class="menu-btn">☰</button>
+        <button @click="toggleMobileMenu" class="menu-btn">
+          <i class="pi pi-bars"></i>
+        </button>
         <h1 class="logo" @click="$router.push('/')">NoteesApp</h1>
       </div>
       
@@ -139,6 +141,10 @@ const handleLogout = () => {
 
 .menu-btn:hover {
   background: var(--hover-bg);
+}
+
+.menu-btn .pi-bars {
+  font-size: 24px;
 }
 
 .logo {

@@ -1,7 +1,9 @@
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h1 class="logo">📝 NoteesApp</h1>
+      <h1 class="logo">
+        <i class="pi pi-book"></i> NoteesApp
+      </h1>
       <p class="subtitle">Digite a senha para acessar</p>
       
       <form @submit.prevent="handleLogin" class="login-form">
@@ -90,6 +92,15 @@ onMounted(() => {
   font-size: 32px;
   margin: 0 0 8px 0;
   color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.logo .pi-book {
+  font-size: 36px;
+  color: #3b82f6;
 }
 
 .subtitle {
