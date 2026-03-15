@@ -144,6 +144,8 @@ npm run dev
 
 # 6. Acessar
 http://localhost:5173
+
+# 7. Senha de acesso: 1234
 ```
 
 ### Scripts Disponíveis
@@ -241,21 +243,10 @@ describe('NoteCard', () => {
   "framework": "vite",
   "regions": ["iad1"],
   "env": {
-    "VITE_API_BASE_URL": "https://noteesapp-be.onrender.com/api"
+    "VITE_API_BASE_URL": "https:apiDoBack"
   }
 }
 ```
-
-### Edge Network
-
-A Vercel usa **Edge Network global** com PoPs em São Paulo, garantindo baixa latência para usuários brasileiros.
-
-| Região | Latência |
-|--------|----------|
-| São Paulo (GRU) | ~20ms |
-| Miami (MIA) | ~150ms |
-| Frankfurt (FRA) | ~200ms |
-
 ---
 
 ## 📱 Responsividade
