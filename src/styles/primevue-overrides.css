@@ -114,3 +114,16 @@ body.dark-mode .p-card-title {
 body.dark-mode .p-card-content {
   color: var(--text-secondary) !important;
 }
+
+/* BOTÕES COM CONTRASTE AA: o verde padrão do tema (#22c55e) dá só 2,3:1 com texto branco */
+body {
+  --p-button-success-background: #15803d;
+  --p-button-success-border-color: #15803d;
+  --p-button-success-color: #ffffff;
+  --p-button-success-hover-background: #166534;
+  --p-button-success-hover-border-color: #166534;
+  --p-button-success-hover-color: #ffffff;
+  --p-button-success-active-background: #14532d;
+  --p-button-success-active-border-color: #14532d;
+  --p-button-success-active-color: #ffffff;
+}

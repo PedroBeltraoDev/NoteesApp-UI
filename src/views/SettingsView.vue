@@ -1,310 +1,177 @@
 <template>
-  <div class="settings">
-    <div class="settings-container">
-      <!-- Sidebar -->
-      <aside class="settings-sidebar">
-        <button @click="goBack" class="btn-back">
-          ← Voltar
-        </button>
-        <h2>Configurações</h2>
-      </aside>
-      
-      <!-- Main Content -->
-      <main class="settings-main">
-        <div class="settings-grid">
-          <!-- Interface Theme -->
-          <div class="setting-card">
-            <div class="card-header">
-              <h3>Interface theme</h3>
-              <p>Select or customize your UI theme.</p>
-            </div>
-            <div class="card-content">
-              <div class="theme-selector">
-                <div class="theme-option" :class="{ active: !isDarkMode }" @click="setTheme('light')">
-                  <div class="theme-preview light"></div>
-                  <span>Light</span>
-                </div>
-                <div class="theme-option" :class="{ active: isDarkMode }" @click="setTheme('dark')">
-                  <div class="theme-preview dark"></div>
-                  <span>Dark</span>
-                </div>
-                <div class="theme-option" @click="setTheme('system')">
-                  <div class="theme-preview system"></div>
-                  <span>System</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Aparência Toggle -->
-          <div class="setting-card">
-            <div class="card-header">
-              <h3>Aparência</h3>
-              <p>Alternar entre tema claro e escuro</p>
-            </div>
-            <div class="card-content">
-              <label class="toggle-switch">
-                <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">{{ isDarkMode ? 'Escuro' : 'Claro' }}</span>
-              </label>
-            </div>
-          </div>
+  <AppShell title="Configurações">
+    <div class="settings-grid">
+      <!-- Tema -->
+      <section class="setting-card" aria-labelledby="theme-title">
+        <div class="card-header">
+          <h2 id="theme-title">Tema</h2>
+          <p>Escolha como o NoteesApp deve aparecer. “Sistema” segue a configuração do seu aparelho.</p>
         </div>
-      </main>
+        <div class="theme-selector" role="radiogroup" aria-labelledby="theme-title">
+          <button
+            v-for="option in themeOptions"
+            :key="option.value"
+            type="button"
+            role="radio"
+            :aria-checked="mode === option.value"
+            class="theme-option"
+            :class="{ active: mode === option.value }"
+            @click="setMode(option.value)"
+          >
+            <span class="theme-preview" :class="option.value" aria-hidden="true"></span>
+            <span class="theme-name">{{ option.label }}</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Conta -->
+      <section class="setting-card" aria-labelledby="account-title">
+        <div class="card-header">
+          <h2 id="account-title">Conta</h2>
+          <p>{{ userEmail ?? 'Sem sessão ativa' }}</p>
+        </div>
+        <button class="btn-sign-out" type="button" @click="signOut">
+          <i class="pi pi-sign-out" aria-hidden="true"></i> Sair da conta
+        </button>
+      </section>
     </div>
-  </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import router from '../router'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import AppShell from '@/components/layout/AppShell.vue'
+import { session } from '@/services/session'
+import { authService } from '@/services/authService'
+import { useTheme, type ThemeMode } from '@/composables/useTheme'
 
-const isDarkMode = ref(false)
+const router = useRouter()
+const { mode, setMode } = useTheme()
 
-const goBack = () => {
-  router.push('/')
-}
+const themeOptions: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+  { value: 'system', label: 'Sistema' }
+]
 
-onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  
-  if (savedTheme === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-  } else {
-    isDarkMode.value = false
-    document.documentElement.classList.remove('dark')
-  }
-})
+const userEmail = computed(() => session.user?.email ?? null)
 
-const toggleDarkMode = () => {
-  if (isDarkMode.value) {
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('theme', 'dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('theme', 'light')
-  }
-}
-
-const setTheme = (theme: string) => {
-  if (theme === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('theme', 'dark')
-  } else if (theme === 'light') {
-    isDarkMode.value = false
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('theme', 'light')
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-    
-    if (prefersDark) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
-  }
+const signOut = async () => {
+  await authService.logout()
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-.settings {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.settings-container {
-  display: flex;
-  min-height: 100vh;
-}
-
-.settings-sidebar {
-  width: 280px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  padding: 40px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.settings-sidebar h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 16px 0 0 0;
-}
-
-.btn-back {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 24px;
-  align-self: flex-start;
-}
-
-.btn-back:hover {
-  background: var(--border-color);
-}
-
-.settings-main {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
-}
-
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
-  max-width: 1200px;
+  gap: 16px;
+  max-width: 760px;
 }
 
 .setting-card {
+  padding: 20px;
   background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
-.card-header h3 {
+.card-header {
+  margin-bottom: 16px;
+}
+
+.card-header h2 {
+  margin: 0 0 6px;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 8px 0;
 }
 
 .card-header p {
+  margin: 0;
   font-size: 14px;
   color: var(--text-secondary);
-  margin: 0;
-}
-
-.card-content {
-  margin-top: 20px;
 }
 
 .theme-selector {
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .theme-option {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
   background: var(--bg-tertiary);
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .theme-option:hover {
-  border-color: var(--accent-color);
+  background: var(--hover-bg);
 }
 
 .theme-option.active {
   border-color: var(--accent-color);
+  background: var(--accent-soft);
 }
 
 .theme-preview {
   width: 100%;
-  height: 80px;
-  border-radius: 6px;
+  height: 64px;
   border: 1px solid var(--border-color);
+  border-radius: 8px;
 }
 
 .theme-preview.light {
-  background: #f8f7f4;
+  background: #f4f5f7;
 }
 
 .theme-preview.dark {
-  background: #1a1a1a;
+  background: #17171a;
 }
 
 .theme-preview.system {
-  background: linear-gradient(135deg, #f8f7f4 50%, #1a1a1a 50%);
+  background: linear-gradient(135deg, #f4f5f7 50%, #17171a 50%);
 }
 
-.theme-option span {
+.theme-name {
   font-size: 14px;
-  color: var(--text-primary);
+  font-weight: 500;
 }
 
-.toggle-switch {
-  display: flex;
+.btn-sign-out {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.toggle-slider {
-  position: relative;
-  width: 52px;
-  height: 28px;
-  background: var(--border-color);
-  border-radius: 28px;
-  transition: all 0.3s;
-}
-
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  background: white;
-  border-radius: 50%;
-  top: 3px;
-  left: 3px;
-  transition: all 0.3s;
-}
-
-.toggle-switch input {
-  display: none;
-}
-
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--accent-color);
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(24px);
-}
-
-.toggle-label {
-  font-size: 14px;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
   color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
-@media (max-width: 768px) {
-  .settings-container {
-    flex-direction: column;
-  }
-  
-  .settings-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-  }
-  
-  .settings-grid {
-    grid-template-columns: 1fr;
+.btn-sign-out:hover {
+  background: var(--hover-bg);
+}
+
+@media (max-width: 480px) {
+  .theme-selector {
+    gap: 8px;
   }
 }
 </style>

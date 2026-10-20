@@ -1,101 +1,49 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://noteesapp-be.onrender.com/api'
+import { request } from './http'
+import type { Note } from '../types/Note'
 
-interface ApiResponse<T> {
-  success: boolean
-  message: string
-  data: T
+// Só o que a API aceita: id, createdAt e updatedAt são decididos pelo servidor
+export interface NoteInput {
+  title: string
+  content: string
+  folder?: string | null
+  tags: string[]
+  isPinned: boolean
 }
 
+function toPayload(note: NoteInput): NoteInput {
+  return {
+    title: note.title,
+    content: note.content,
+    folder: note.folder ?? null,
+    tags: note.tags ?? [],
+    isPinned: note.isPinned ?? false
+  }
+}
+
+// Todas as chamadas exigem login e lançam ApiError em caso de falha (inclusive de rede).
+// Quem chama decide como avisar o usuário.
 export const api = {
-  async getNotes(folder?: string | null, tag?: string | null) {
-    try {
-      const params = new URLSearchParams()
-      if (folder) params.append('folder', folder)
-      if (tag) params.append('tag', tag)
-      
-      const res = await fetch(`${API_BASE_URL}/notes?${params}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<any[]> = await res.json()
-      return result.success ? result.data : []
-    } catch (error) {
-      console.error('Erro ao buscar notas:', error)
-      return []
-    }
+  getNotes(folder?: string | null, tag?: string | null) {
+    return request<Note[]>('/notes', { query: { folder, tag } })
   },
-  
-  async getFolders() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/notes/folders`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<string[]> = await res.json()
-      return result.success ? result.data : []
-    } catch (error) {
-      console.error('Erro ao buscar pastas:', error)
-      return []
-    }
+
+  getFolders() {
+    return request<string[]>('/notes/folders')
   },
-  
-  async getTags() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/notes/tags`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<string[]> = await res.json()
-      return result.success ? result.data : []
-    } catch (error) {
-      console.error('Erro ao buscar tags:', error)
-      return []
-    }
+
+  getTags() {
+    return request<string[]>('/notes/tags')
   },
-  
-  async createNote(note: any) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<any> = await res.json()
-      return result.success ? result.data : result
-    } catch (error) {
-      console.error('Erro ao criar nota:', error)
-      throw error
-    }
+
+  createNote(note: NoteInput) {
+    return request<Note>('/notes', { method: 'POST', body: toPayload(note) })
   },
-  
-  async updateNote(note: any) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/notes/${note.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<any> = await res.json()
-      return result.success ? result.data : result
-    } catch (error) {
-      console.error('Erro ao atualizar nota:', error)
-      throw error
-    }
+
+  updateNote(note: NoteInput & { id: number }) {
+    return request<Note>(`/notes/${note.id}`, { method: 'PUT', body: toPayload(note) })
   },
-  
+
   async deleteNote(id: number) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/notes/${id}`, {
-        method: 'DELETE'
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const result: ApiResponse<any> = await res.json()
-      return result.success
-    } catch (error) {
-      console.error('Erro ao excluir nota:', error)
-      return false
-    }
+    await request(`/notes/${id}`, { method: 'DELETE' })
   }
 }

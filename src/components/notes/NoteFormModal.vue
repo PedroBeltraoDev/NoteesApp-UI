@@ -22,10 +22,12 @@
           v-model="title"
           placeholder="Digite o título da nota"
           :class="{ 'p-invalid': errors.title }"
+          :aria-invalid="!!errors.title"
+          :aria-describedby="errors.title ? 'title-error' : undefined"
           maxlength="200"
           class="w-full"
         />
-        <small v-if="errors.title" class="p-error">{{ errors.title }}</small>
+        <small v-if="errors.title" id="title-error" class="p-error" role="alert">{{ errors.title }}</small>
       </div>
       
       <!-- Conteúdo -->
@@ -40,11 +42,13 @@
           @input="clearContentError"  
           placeholder="Digite o conteúdo da nota"
           :class="['w-full', { 'p-invalid': errors.content }]"
+          :aria-invalid="!!errors.content"
+          :aria-describedby="errors.content ? 'content-error' : undefined"
           maxlength="1000"
           rows="6"
           autoResize
         />
-        <small v-if="errors.content" class="p-error">{{ errors.content }}</small>
+        <small v-if="errors.content" id="content-error" class="p-error" role="alert">{{ errors.content }}</small>
       </div>
       
       <!-- Pasta e Tags -->
@@ -53,12 +57,17 @@
           <label for="folder" class="form-label">Pasta (opcional)</label>
           <PSelect
             v-model="folder"
+            inputId="folder"
             :options="folderOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Selecione uma pasta"
-            class="w-full"
+            editable
+            placeholder="Escolha ou digite uma pasta"
+            :class="['w-full', { 'p-invalid': errors.folder }]"
+            aria-describedby="folder-hint"
           />
+          <small id="folder-hint" class="field-hint">Escolha uma pasta ou digite um nome novo para criá-la.</small>
+          <small v-if="errors.folder" class="p-error" role="alert">{{ errors.folder }}</small>
         </div>
         
         <div class="form-group">
@@ -67,8 +76,11 @@
             id="tags"
             v-model="tags"
             placeholder="ex: vue, typescript, api"
-            class="w-full"
+            :class="['w-full', { 'p-invalid': errors.tags }]"
+            aria-describedby="tags-hint"
           />
+          <small id="tags-hint" class="field-hint">Até 20 tags, de até 50 caracteres cada.</small>
+          <small v-if="errors.tags" class="p-error" role="alert">{{ errors.tags }}</small>
         </div>
       </div>
     </div>
@@ -92,11 +104,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   isOpen: boolean
   note: any | null
+  // Pastas que o usuário já tem (vêm da API); a pasta digitada que não existir vira uma pasta nova
+  folders?: string[]
 }>()
 
 const emit = defineEmits(['close', 'saved'])
@@ -109,15 +123,14 @@ const tags = ref('')
 const errors = ref<any>({})
 const saving = ref(false)
 
-// Opções de pasta
-const folderOptions = [
-  { label: 'Nenhuma', value: '' },
-  { label: 'Aprendendo', value: 'Aprendendo' },
-  { label: 'Projetos', value: 'Projetos' },
-  { label: 'Pessoal', value: 'Pessoal' },
-  { label: 'Trabalho', value: 'Trabalho' },
-  { label: 'Ideias', value: 'Ideias' }
-]
+// Opções de pasta: as pastas reais do usuário (mais a da nota em edição, se ela não estiver na lista)
+const folderOptions = computed(() => {
+  const names = new Set(props.folders ?? [])
+  if (props.note?.folder) names.add(props.note.folder)
+
+  const sorted = [...names].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return [{ label: 'Sem pasta', value: '' }, ...sorted.map(name => ({ label: name, value: name }))]
+})
 
 // Resetar formulário
 const resetForm = () => {
@@ -163,6 +176,19 @@ const validateForm = () => {
     errors.value.title = 'Título deve ter no máximo 200 caracteres'
   }
   
+  // Pasta (limite da API: 100 caracteres)
+  if ((folder.value ?? '').trim().length > 100) {
+    errors.value.folder = 'O nome da pasta deve ter no máximo 100 caracteres'
+  }
+
+  // Tags (limites da API: 20 tags de até 50 caracteres)
+  const parsedTags = tags.value.split(',').map(t => t.trim()).filter(t => t.length > 0)
+  if (parsedTags.length > 20) {
+    errors.value.tags = 'Use no máximo 20 tags'
+  } else if (parsedTags.some(t => t.length > 50)) {
+    errors.value.tags = 'Cada tag deve ter no máximo 50 caracteres'
+  }
+
   // Conteúdo - VERIFICAR SE ESTÁ VAZIO OU MUITO CURTO
   if (!content.value || content.value.trim().length === 0) {
     errors.value.content = 'Conteúdo é obrigatório'
@@ -188,9 +214,9 @@ const handleSubmit = () => {
   emit('saved', {
     title: title.value.trim(),
     content: content.value.trim(),
-    folder: folder.value.trim() || null,
+    folder: (folder.value ?? '').trim() || null,
     tags: tagsArray,
-    isPinned: false
+    isPinned: props.note?.isPinned ?? false
   })
   
   saving.value = false
@@ -208,6 +234,13 @@ const clearContentError = () => {
 </script>
 
 <style scoped>
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .modal-content {
   display: flex;
   flex-direction: column;

@@ -1,62 +1,92 @@
 /* CSS VARIABLES - THEME */
 
-/* Dark Mode (Padrão) */
-:root,
-body.dark-mode {
-  /* Backgrounds */
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #2a2a2a;
-  
-  /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: #b0b0b0;
-  --text-tertiary: #707070;
-  
-  /* Accent Colors */
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-glow: rgba(59, 130, 246, 0.3);
-  
-  /* Borders & UI */
-  --border-color: #3a3a3a;
-  --card-bg: #1e1e1e;
-  --hover-bg: #2a2a2a;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
-  
+/* Medidas do shell (iguais nos dois temas) */
+:root {
+  --rail-w: 72px;
+  --rail-w-expanded: 232px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Cores de categoria das notas (borda do card, avatar da pasta) */
+  --note-green: #22c55e;
+  --note-amber: #f59e0b;
+  --note-sky: #38bdf8;
+  --note-coral: #f87171;
+  --note-violet: #a78bfa;
+  --note-teal: #2dd4bf;
+
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
   --transition-slow: 0.4s ease;
 }
 
+/* Dark Mode (Padrão) */
+:root,
+body.dark-mode {
+  /* Camadas: moldura > barra lateral > fundo > painel > card */
+  --frame-bg: #2b2c30;
+  --rail-bg: #101012;
+  --bg-primary: #17171a;
+  --bg-secondary: #1d1d21;
+  --bg-tertiary: #2a2a30;
+  --card-bg: #151518;
+  --hover-bg: #26262c;
+
+  /* Text Colors */
+  --text-primary: #f2f2f4;
+  --text-secondary: #b6b6c0;
+  --text-tertiary: #8f8f9b;
+
+  /* Accent Colors (verde) */
+  --accent-color: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-strong: #15803d;
+  --accent-text: #4ade80;
+  --accent-soft: rgba(34, 197, 94, 0.14);
+  --accent-glow: rgba(34, 197, 94, 0.3);
+  --focus-ring: #4ade80;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+  --star: #fbbf24;
+
+  /* Borders & UI */
+  --border-color: #33333a;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
 /* Light Mode */
 body.light-mode {
-  /* Backgrounds */
-  --bg-primary: #fafafa;
+  --frame-bg: #e3e6ea;
+  --rail-bg: #ffffff;
+  --bg-primary: #f4f5f7;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f0f0;
-  
-  /* Text Colors */
-  --text-primary: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-tertiary: #8a8a8a;
-  
-  /* Accent Colors */
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-glow: rgba(59, 130, 246, 0.2);
-  
-  /* Borders & UI */
-  --border-color: #e0e0e0;
+  --bg-tertiary: #eef0f3;
   --card-bg: #ffffff;
-  --hover-bg: #f5f5f5;
-  
-  /* Shadows */
+  --hover-bg: #f0f2f5;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #5b6472;
+
+  --accent-color: #16a34a;
+  --accent-hover: #15803d;
+  --accent-strong: #15803d;
+  --accent-text: #15803d;
+  --accent-soft: rgba(22, 163, 74, 0.12);
+  --accent-glow: rgba(22, 163, 74, 0.2);
+  --focus-ring: #15803d;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --star: #d97706;
+
+  --border-color: #dfe3e8;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);

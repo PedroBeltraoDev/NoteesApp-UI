@@ -1,30 +1,19 @@
-export function setupAuthGuard(router: any) {
-  router.beforeEach((to: any, from: any, next: any) => {
-    const isAuthenticated = localStorage.getItem('noteesapp_auth') === 'true'
-    const authTime = localStorage.getItem('noteesapp_auth_time')
-    
-    const isSessionExpired = authTime && 
-      Date.now() - parseInt(authTime) > 24 * 60 * 60 * 1000
-    
-    if (isSessionExpired) {
-      localStorage.removeItem('noteesapp_auth')
-      localStorage.removeItem('noteesapp_auth_time')
-    }
-    
-    const publicRoutes = ['/login']
-    
-    if (publicRoutes.includes(to.path)) {
-      if (isAuthenticated && !isSessionExpired) {
-        next('/')
-      } else {
-        next()
-      }
-    } else {
-      if (isAuthenticated && !isSessionExpired) {
-        next()
-      } else {
-        next('/login')
-      }
-    }
+import type { Router } from 'vue-router'
+import { session } from '@/services/session'
+
+const LOGIN_PATH = '/login'
+
+export function setupAuthGuard(router: Router) {
+  router.beforeEach(to => {
+    const isAuthenticated = session.isAuthenticated
+
+    if (to.path === LOGIN_PATH) return isAuthenticated ? '/' : true
+
+    return isAuthenticated ? true : LOGIN_PATH
+  })
+
+  // Logout, refresh recusado ou logout em outra aba: volta para o login sem esperar uma navegação
+  session.onCleared(() => {
+    if (router.currentRoute.value.path !== LOGIN_PATH) router.replace(LOGIN_PATH)
   })
 }

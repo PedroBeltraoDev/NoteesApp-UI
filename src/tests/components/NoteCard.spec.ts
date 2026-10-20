@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import NoteCard from '@/components/notes/NoteCard.vue'
 
@@ -6,96 +6,147 @@ describe('NoteCard', () => {
   const mockNote = {
     id: 1,
     title: 'Nota de Teste',
-    content: 'Conteúdo da nota com mais de 150 caracteres para testar o truncamento do conteúdo exibido no card da nota. Este texto é longo o suficiente para validar o comportamento de truncamento.',
+    content: 'Conteúdo da nota com mais de 150 caracteres para testar a exibição do conteúdo no card da nota. Este texto é longo o suficiente para validar o comportamento do resumo.',
     createdAt: '2024-01-15T10:30:00Z',
     tags: ['vue', 'teste'],
-    folder: 'Testes',
+    folder: 'Testes' as string | null,
     isPinned: false
   }
 
-  it('renders note title correctly', () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    expect(wrapper.text()).toContain('Nota de Teste')
+  const mountCard = (note = mockNote) => mount(NoteCard, { props: { note }, attachTo: document.body })
+
+  it('renders the title, the folder and the tags', () => {
+    const wrapper = mountCard()
+
+    expect(wrapper.find('.note-title').text()).toBe('Nota de Teste')
+    expect(wrapper.find('.note-folder-name').text()).toBe('Testes')
+    expect(wrapper.findAll('.note-tags .tag').map(t => t.text())).toEqual(['vue', 'teste'])
+    wrapper.unmount()
   })
 
-  it('truncates content longer than 150 characters', () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    const content = wrapper.find('.note-content')
-    if (content.exists()) {
-      expect(content.text().length).toBeLessThanOrEqual(155)
-    }
+  it('shows "Sem pasta" for notes without a folder', () => {
+    const wrapper = mountCard({ ...mockNote, folder: null })
+
+    expect(wrapper.find('.note-folder-name').text()).toBe('Sem pasta')
+    wrapper.unmount()
   })
 
-  it('emits edit event when edit button is clicked', async () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    const editButton = wrapper.findAll('.action-btn')[0]
-    if (editButton) {
-      await editButton.trigger('click')
-      expect(wrapper.emitted('edit')).toBeTruthy()
-      expect(wrapper.emitted('edit')?.[0]).toEqual([mockNote])
-    }
+  it('shows the whole content (the clamp is done by CSS, no cut in the middle of a word)', () => {
+    const wrapper = mountCard()
+
+    expect(wrapper.find('.note-content').text()).toBe(mockNote.content)
+    expect(wrapper.find('.read-more').exists()).toBe(false)
+    wrapper.unmount()
   })
 
-  it('emits togglePin event when pin button is clicked', async () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    const pinButton = wrapper.findAll('.action-btn')[1]
-    if (pinButton) {
-      await pinButton.trigger('click')
-      expect(wrapper.emitted('togglePin')).toBeTruthy()
-      expect(wrapper.emitted('togglePin')?.[0]).toEqual([mockNote.id])
-    }
+  it('shows a readable date with a machine-readable datetime', () => {
+    const wrapper = mountCard()
+
+    const time = wrapper.find('time')
+    expect(time.attributes('datetime')).toBe(mockNote.createdAt)
+    expect(time.text()).toMatch(/jan|2024/i)
+    wrapper.unmount()
   })
 
-  it('emits delete event when delete button is clicked', async () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    const deleteButton = wrapper.find('.action-btn.delete')
-    if (deleteButton.exists()) {
-      await deleteButton.trigger('click')
-      expect(wrapper.emitted('delete')).toBeTruthy()
-      expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
-    }
+  it('colors the card by folder, always the same color for the same folder', () => {
+    const a = mountCard()
+    const b = mountCard({ ...mockNote, id: 2, folder: 'testes' })
+
+    const colorA = a.find('.note-card').attributes('style')
+    expect(colorA).toContain('--note-color')
+    expect(b.find('.note-card').attributes('style')).toBe(colorA)
+    a.unmount()
+    b.unmount()
   })
 
-  it('shows pin badge when note is pinned', () => {
-    const pinnedNote = { ...mockNote, isPinned: true }
-    const wrapper = mount(NoteCard, {
-      props: { note: pinnedNote }
-    })
-    
-    expect(wrapper.text()).toContain('Fixada')
+  it('emits delete with the note id from the trash button', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.find('.icon-action.delete').trigger('click')
+
+    expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
+    wrapper.unmount()
   })
 
-  it('renders tags when note has tags', () => {
-    const wrapper = mount(NoteCard, {
-      props: { note: mockNote }
-    })
-    
-    expect(wrapper.text()).toContain('vue')
-    expect(wrapper.text()).toContain('teste')
+  it('emits togglePin with the note id from the star button', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.find('.icon-action.star').trigger('click')
+
+    expect(wrapper.emitted('togglePin')?.[0]).toEqual([mockNote.id])
+    wrapper.unmount()
   })
 
-  it('does not render tags section when note has no tags', () => {
-    const noteWithoutTags = { ...mockNote, tags: [] }
-    const wrapper = mount(NoteCard, {
-      props: { note: noteWithoutTags }
-    })
-    
-    const tagsSection = wrapper.find('.note-tags')
-    expect(tagsSection.exists()).toBe(false)
+  it('the star reflects whether the note is a favorite', () => {
+    const plain = mountCard()
+    const favorite = mountCard({ ...mockNote, isPinned: true })
+
+    expect(plain.find('.icon-action.star').attributes('aria-pressed')).toBe('false')
+    expect(plain.find('.icon-action.star i').classes()).toContain('pi-star')
+    expect(favorite.find('.icon-action.star').attributes('aria-pressed')).toBe('true')
+    expect(favorite.find('.icon-action.star i').classes()).toContain('pi-star-fill')
+    expect(favorite.find('.note-card').classes()).toContain('favorite')
+    plain.unmount()
+    favorite.unmount()
+  })
+
+  it('the ⋮ menu offers Abrir, Editar and Excluir', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.find('.kebab-trigger').trigger('click')
+
+    expect(wrapper.findAll('[role="menuitem"]').map(i => i.text())).toEqual(['Abrir', 'Editar', 'Excluir'])
+    wrapper.unmount()
+  })
+
+  it('emits edit with the note from the ⋮ menu', async () => {
+    const wrapper = mountCard()
+    await wrapper.find('.kebab-trigger').trigger('click')
+
+    await wrapper.findAll('[role="menuitem"]')[1]!.trigger('click')
+
+    expect(wrapper.emitted('edit')?.[0]).toEqual([mockNote])
+    wrapper.unmount()
+  })
+
+  it('emits delete from the ⋮ menu', async () => {
+    const wrapper = mountCard()
+    await wrapper.find('.kebab-trigger').trigger('click')
+
+    await wrapper.findAll('[role="menuitem"]')[2]!.trigger('click')
+
+    expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
+    wrapper.unmount()
+  })
+
+  it('"Abrir" in the ⋮ menu opens the full note', async () => {
+    const wrapper = mountCard()
+    await wrapper.find('.kebab-trigger').trigger('click')
+
+    await wrapper.findAll('[role="menuitem"]')[0]!.trigger('click')
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('clicking the action buttons does not open the full note', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.find('.icon-action.star').trigger('click')
+    await wrapper.find('.icon-action.delete').trigger('click')
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('"Editar nota" inside the full view closes it and emits edit', async () => {
+    const wrapper = mountCard()
+    await wrapper.find('.note-card').trigger('click')
+
+    await wrapper.find('.btn-edit').trigger('click')
+
+    expect(wrapper.emitted('edit')?.[0]).toEqual([mockNote])
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 })

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256" role="img" aria-label="NoteesApp">
+  <title>NoteesApp</title>
+  <defs>
+    <linearGradient id="g" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+  <!-- placa -->
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <!-- folha de trás, levemente inclinada: "notas" no plural -->
+  <rect x="15" y="14" width="25" height="35" rx="4" transform="rotate(-10 27.5 31.5)" fill="#fff" fill-opacity=".38"/>
+  <!-- folha da frente com a dobra no canto -->
+  <path fill="#fff" d="M25 13h12l10 10v22a4 4 0 0 1-4 4H25a4 4 0 0 1-4-4V17a4 4 0 0 1 4-4Z"/>
+  <path fill="#bbf7d0" d="M37 13v6a4 4 0 0 0 4 4h6L37 13Z"/>
+  <!-- linhas de texto -->
+  <rect x="26" y="29" width="15" height="3" rx="1.5" fill="#16a34a"/>
+  <rect x="26" y="35" width="15" height="3" rx="1.5" fill="#86efac"/>
+  <rect x="26" y="41" width="9" height="3" rx="1.5" fill="#86efac"/>
+</svg>

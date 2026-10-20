@@ -3,58 +3,45 @@ import { mount } from '@vue/test-utils'
 import Topbar from '@/components/layout/Topbar.vue'
 
 describe('Topbar', () => {
-  it('renders app title', () => {
-    const wrapper = mount(Topbar)
-    expect(wrapper.text()).toContain('NoteesApp')
+  it('shows the page title as the page heading', () => {
+    const wrapper = mount(Topbar, { props: { title: 'Notas' } })
+
+    expect(wrapper.find('h1').text()).toBe('Notas')
   })
 
-  it.skip('renders search input', () => {
+  it('emits search when typing in the search field', async () => {
     const wrapper = mount(Topbar)
-    const searchInput = wrapper.find('input')
-    expect(searchInput.exists()).toBe(true)
+
+    await wrapper.find('#search-desktop').setValue('teste')
+
+    expect(wrapper.emitted('search')?.[0]).toEqual(['teste'])
   })
 
-  it('emits search event when typing in search input', async () => {
-    const wrapper = mount(Topbar)
-    const searchInput = wrapper.find('input')
-    if (searchInput.exists()) {
-      await searchInput.setValue('teste')
-      await searchInput.trigger('input')
-      expect(wrapper.emitted('search')).toBeTruthy()
-    }
+  it('hides the search on pages that do not use it', () => {
+    const wrapper = mount(Topbar, { props: { showSearch: false } })
+
+    expect(wrapper.find('#search-desktop').exists()).toBe(false)
+    expect(wrapper.find('button.btn-search-toggle').exists()).toBe(false)
   })
 
-  it('renders new note button', () => {
+  it('emits toggleNav from the menu button', async () => {
     const wrapper = mount(Topbar)
-    const newNoteButton = wrapper.find('[title="Nova Nota"], .btn-new-note, button')
-    expect(newNoteButton.exists()).toBe(true)
+
+    await wrapper.find('button.menu-btn').trigger('click')
+
+    expect(wrapper.emitted('toggleNav')).toHaveLength(1)
   })
 
-  it.skip('emits createNote event when new note button is clicked', async () => {
-    const wrapper = mount(Topbar)
-    const newNoteButton = wrapper.find('[title="Nova Nota"], .btn-new-note, button')
-    if (newNoteButton.exists()) {
-      await newNoteButton.trigger('click')
-      expect(wrapper.emitted('createNote') || wrapper.emitted('new-note')).toBeTruthy()
-    }
-  })
+  it('the menu button tells screen readers whether the menu is open', async () => {
+    const wrapper = mount(Topbar, { props: { navOpen: false } })
+    const button = wrapper.find('button.menu-btn')
 
-  it('renders theme toggle button', () => {
-    const wrapper = mount(Topbar)
-    const themeButton = wrapper.find('[title*="tema"], .btn-theme, button')
-    expect(themeButton.exists()).toBe(true)
-  })
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(button.attributes('aria-label')).toBe('Abrir o menu')
 
-  it.skip('emits toggleTheme event when theme button is clicked', async () => {
-    const wrapper = mount(Topbar)
-    const themeButton = wrapper.find('[title*="tema"], .btn-theme, button')
-    if (themeButton.exists()) {
-      await themeButton.trigger('click')
-      const emitted = wrapper.emitted()
-      const hasThemeEvent = Object.keys(emitted).some(key => 
-        key.toLowerCase().includes('theme') || key.toLowerCase().includes('toggle')
-      )
-      expect(hasThemeEvent).toBe(true)
-    }
+    await wrapper.setProps({ navOpen: true })
+
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(button.attributes('aria-label')).toBe('Fechar o menu')
   })
 })

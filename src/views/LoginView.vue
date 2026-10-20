@@ -1,71 +1,197 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
-      <h1 class="logo">
-        <i class="pi pi-book"></i> NoteesApp
+    <main class="login-box">
+      <h1 class="brand">
+        <AppLogo :size="52" wordmark />
       </h1>
-      <p class="subtitle">Digite a senha para acessar</p>
-      
-      <form @submit.prevent="handleLogin" class="login-form">
+      <p class="subtitle">
+        {{ isRegister ? 'Crie sua conta para começar' : 'Entre para acessar suas notas' }}
+      </p>
+
+      <form @submit.prevent="handleSubmit" class="login-form" novalidate>
         <div class="form-group">
-          <input 
-            v-model="password" 
-            type="password" 
-            placeholder="Senha"
+          <label for="login-email" class="field-label">E-mail</label>
+          <input
+            id="login-email"
+            v-model="email"
+            type="email"
+            placeholder="voce@exemplo.com"
             class="input-field"
-            ref="passwordInput"
-            autofocus
+            :class="{ invalid: fieldErrors.email }"
+            :aria-invalid="!!fieldErrors.email"
+            :aria-describedby="fieldErrors.email ? 'login-email-error' : undefined"
+            autocomplete="email"
+            maxlength="254"
+            ref="emailInput"
+            @input="clearFeedback"
           />
+          <p v-if="fieldErrors.email" id="login-email-error" class="field-error" role="alert">{{ fieldErrors.email }}</p>
         </div>
-        
-        <p v-if="error" class="error-message">{{ error }}</p>
-        
+
+        <div class="form-group">
+          <label for="login-password" class="field-label">Senha</label>
+          <div class="password-wrapper">
+            <input
+              id="login-password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              :placeholder="isRegister ? 'Mínimo de 8 caracteres' : 'Sua senha'"
+              class="input-field has-toggle"
+              :class="{ invalid: fieldErrors.password }"
+              :aria-invalid="!!fieldErrors.password"
+              :aria-describedby="fieldErrors.password ? 'login-password-error' : undefined"
+              :autocomplete="isRegister ? 'new-password' : 'current-password'"
+              maxlength="128"
+              @input="clearFeedback"
+            />
+            <button
+              type="button"
+              class="toggle-password"
+              :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <i :class="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p v-if="fieldErrors.password" id="login-password-error" class="field-error" role="alert">{{ fieldErrors.password }}</p>
+        </div>
+
+        <div v-if="isRegister" class="form-group">
+          <label for="login-confirm" class="field-label">Confirmar senha</label>
+          <input
+            id="login-confirm"
+            v-model="confirmPassword"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Repita a senha"
+            class="input-field"
+            :class="{ invalid: fieldErrors.confirmPassword }"
+            :aria-invalid="!!fieldErrors.confirmPassword"
+            :aria-describedby="fieldErrors.confirmPassword ? 'login-confirm-error' : undefined"
+            autocomplete="new-password"
+            maxlength="128"
+            @input="clearFeedback"
+          />
+          <p v-if="fieldErrors.confirmPassword" id="login-confirm-error" class="field-error" role="alert">{{ fieldErrors.confirmPassword }}</p>
+        </div>
+
+        <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+
         <button type="submit" class="btn-login" :disabled="loading">
-          {{ loading ? 'Entrando...' : 'Entrar' }}
+          {{ submitLabel }}
         </button>
       </form>
-    </div>
+
+      <p class="switch-mode">
+        {{ isRegister ? 'Já tem conta?' : 'Ainda não tem conta?' }}
+        <button type="button" class="link-button" :disabled="loading" @click="toggleMode">
+          {{ isRegister ? 'Entrar' : 'Criar conta' }}
+        </button>
+      </p>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { authService } from '@/services/authService'
+import { ApiError } from '@/services/http'
+import AppLogo from '@/components/common/AppLogo.vue'
 
 const router = useRouter()
+
+const mode = ref<'login' | 'register'>('login')
+const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
-const passwordInput = ref<HTMLInputElement | null>(null)
+const emailInput = ref<HTMLInputElement | null>(null)
+const showPassword = ref(false)
+const fieldErrors = reactive({ email: '', password: '', confirmPassword: '' })
 
-const CORRECT_PASSWORD = import.meta.env.VITE_APP_PASSWORD || '1234'
+const isRegister = computed(() => mode.value === 'register')
+const submitLabel = computed(() => {
+  if (loading.value) return isRegister.value ? 'Criando conta...' : 'Entrando...'
+  return isRegister.value ? 'Criar conta' : 'Entrar'
+})
 
-const handleLogin = async () => {
-  if (!password.value.trim()) {
-    error.value = 'Digite a senha'
-    return
-  }
-  
-  loading.value = true
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const clearFeedback = () => {
   error.value = ''
-  
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  if (password.value === CORRECT_PASSWORD) {
-    localStorage.setItem('noteesapp_auth', 'true')
-    localStorage.setItem('noteesapp_auth_time', Date.now().toString())
-    router.push('/')
-  } else {
-    error.value = 'Senha incorreta'
-    password.value = ''
-    passwordInput.value?.focus()
+  fieldErrors.email = ''
+  fieldErrors.password = ''
+  fieldErrors.confirmPassword = ''
+}
+
+const validate = () => {
+  clearFeedback()
+
+  if (!email.value.trim()) fieldErrors.email = 'Digite seu e-mail'
+  else if (!EMAIL_PATTERN.test(email.value.trim())) fieldErrors.email = 'E-mail inválido'
+
+  if (!password.value) fieldErrors.password = 'Digite sua senha'
+  else if (isRegister.value && password.value.length < 8) fieldErrors.password = 'A senha deve ter pelo menos 8 caracteres'
+
+  if (isRegister.value && password.value && confirmPassword.value !== password.value) {
+    fieldErrors.confirmPassword = 'As senhas não conferem'
   }
-  
-  loading.value = false
+
+  return !fieldErrors.email && !fieldErrors.password && !fieldErrors.confirmPassword
+}
+
+// Erros de validação do servidor chegam como { Email: [...], Password: [...] }
+const applyServerErrors = (apiError: ApiError) => {
+  const pick = (key: string) => apiError.errors[key]?.[0] ?? apiError.errors[key.toLowerCase()]?.[0] ?? ''
+
+  fieldErrors.email = pick('Email')
+  fieldErrors.password = pick('Password')
+
+  if (!fieldErrors.email && !fieldErrors.password) error.value = apiError.message
+}
+
+const handleSubmit = async () => {
+  if (loading.value || !validate()) return
+
+  loading.value = true
+
+  try {
+    const normalizedEmail = email.value.trim()
+
+    if (isRegister.value) await authService.register(normalizedEmail, password.value)
+    else await authService.login(normalizedEmail, password.value)
+
+    await router.push('/')
+  } catch (e) {
+    if (!(e instanceof ApiError)) {
+      error.value = 'Algo deu errado. Tente novamente.'
+    } else if (e.status === 400) {
+      applyServerErrors(e)
+    } else if (e.status === 429) {
+      error.value = 'Muitas tentativas. Aguarde um minuto e tente novamente.'
+    } else {
+      // 401 (e-mail ou senha inválidos), 409 (e-mail já cadastrado), rede fora, 5xx...
+      error.value = e.message
+    }
+
+    password.value = ''
+    confirmPassword.value = ''
+  } finally {
+    loading.value = false
+  }
+}
+
+const toggleMode = () => {
+  mode.value = isRegister.value ? 'login' : 'register'
+  password.value = ''
+  confirmPassword.value = ''
+  clearFeedback()
 }
 
 onMounted(() => {
-  passwordInput.value?.focus()
+  emailInput.value?.focus()
 })
 </script>
 
@@ -75,38 +201,36 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a1a1a;
+  padding: 16px;
+  background: var(--frame-bg);
 }
 
 .login-box {
-  background: #2d2d2d;
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: 40px 36px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
-.logo {
-  font-size: 32px;
-  margin: 0 0 8px 0;
-  color: #ffffff;
+.brand {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 12px;
+  margin: 0 0 8px;
 }
 
-.logo .pi-book {
-  font-size: 36px;
-  color: #3b82f6;
+.brand :deep(.wordmark) {
+  font-size: 30px;
 }
 
 .subtitle {
-  color: #888;
-  margin: 0 0 32px 0;
+  margin: 0 0 28px;
   font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .login-form {
@@ -115,41 +239,97 @@ onMounted(() => {
   gap: 16px;
 }
 
+.form-group {
+  text-align: left;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 6px 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
 .input-field {
   width: 100%;
-  padding: 14px 18px;
-  border: 2px solid #444;
-  border-radius: 10px;
+  box-sizing: border-box;
+  padding: 13px 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font: inherit;
   font-size: 16px;
-  background: #1a1a1a;
-  color: #fff;
-  transition: all 0.2s;
-  text-align: center;
-  letter-spacing: 4px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input-field::placeholder {
+  color: var(--text-tertiary);
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.input-field.invalid {
+  border-color: var(--danger);
+}
+
+.input-field.has-toggle {
+  padding-right: 52px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.toggle-password:hover {
+  color: var(--text-primary);
+}
+
+.field-error {
+  margin: 6px 4px 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 .btn-login {
-  background: #3b82f6;
-  color: white;
-  border: none;
+  margin-top: 8px;
   padding: 14px 24px;
-  border-radius: 10px;
+  background: var(--accent-strong);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font: inherit;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 8px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .btn-login:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-2px);
+  background: #166534;
+  transform: translateY(-1px);
 }
 
 .btn-login:disabled {
@@ -158,8 +338,35 @@ onMounted(() => {
 }
 
 .error-message {
-  color: #dc2626;
-  font-size: 14px;
   margin: 0;
+  font-size: 14px;
+  color: var(--danger);
+}
+
+.switch-mode {
+  margin: 24px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.link-button {
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    padding: 32px 22px;
+  }
 }
 </style>
