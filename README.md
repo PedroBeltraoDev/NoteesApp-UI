@@ -268,20 +268,20 @@ describe('NoteCard', () => {
 
 ### Vercel (Frontend)
 
-```yaml
-# vercel.json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "regions": ["iad1"],
-  "env": {
-    "VITE_API_BASE_URL": "https:apiDoBack"
-  }
-}
-```
+O `vercel.json` da **raiz** do repositório já configura o projeto (framework Vite; build padrão `npm run build`, com checagem de tipos, saída em `dist`),
+reescreve toda rota para `/index.html` (sem isso, abrir ou recarregar `/login` ou `/configuracoes` dá 404) e adiciona
+cabeçalhos de segurança básicos.
+
+1. Importe o repositório na Vercel (Add New > Project). O preset é detectado como Vite.
+2. Em **Settings > Environment Variables** defina `VITE_API_BASE_URL` com a URL da API terminada em `/api`
+   (ex.: `https://noteesapp-be.onrender.com/api`) para Production e Preview.
+3. No **backend (Render)**, libere o endereço do front no CORS: `Cors__AllowedOrigins__0=https://seu-app.vercel.app`
+   (uma variável por endereço: `__0`, `__1`...). Previews da Vercel têm endereços próprios; para testá-los, adicione-os também.
+4. O backend também precisa de `Jwt__Key` e das migrations aplicadas (veja o README do backend). **Sem a API com login
+   no ar, o front novo não consegue entrar.**
+
+Cada push gera um *preview deployment*; o merge na `main` publica em produção.
+
 ---
 
 ## 📱 Responsividade
