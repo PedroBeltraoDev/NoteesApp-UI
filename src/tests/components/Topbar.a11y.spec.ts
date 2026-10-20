@@ -32,7 +32,6 @@ describe('Topbar (acessibilidade e mobile)', () => {
   beforeEach(() => {
     resetSession()
     session.set(makeSession())
-    document.body.className = 'dark-mode'
     vi.mocked(authService.logout).mockClear()
   })
 
@@ -41,7 +40,7 @@ describe('Topbar (acessibilidade e mobile)', () => {
 
     const iconButtons = wrapper.findAll('button.icon-btn')
 
-    expect(iconButtons.length).toBeGreaterThanOrEqual(4) // menu, busca, tema, conta
+    expect(iconButtons.length).toBeGreaterThanOrEqual(2) // menu e busca
     for (const button of iconButtons) {
       expect(button.attributes('aria-label'), button.html()).toBeTruthy()
     }
@@ -51,22 +50,8 @@ describe('Topbar (acessibilidade e mobile)', () => {
   it('labels the search fields', async () => {
     const { wrapper } = await mountTopbar()
 
-    const label = wrapper.find('label[for="search-desktop"]')
-
-    expect(label.exists()).toBe(true)
+    expect(wrapper.find('label[for="search-desktop"]').exists()).toBe(true)
     expect(wrapper.find('#search-desktop').exists()).toBe(true)
-    wrapper.unmount()
-  })
-
-  it('the theme button name says what it will do and switches the theme', async () => {
-    const { wrapper } = await mountTopbar()
-    const button = wrapper.find('button.btn-theme')
-    const before = button.attributes('aria-label')
-
-    await button.trigger('click')
-
-    expect(button.attributes('aria-label')).not.toBe(before)
-    expect(before).toMatch(/tema/i)
     wrapper.unmount()
   })
 
@@ -107,12 +92,20 @@ describe('Topbar (acessibilidade e mobile)', () => {
     wrapper.unmount()
   })
 
-  it('the account menu shows who is logged in', async () => {
+  it('the account button is named after the logged-in user', async () => {
     const { wrapper } = await mountTopbar()
 
-    await wrapper.find('button.account-btn').trigger('click')
+    const trigger = wrapper.find('button.account-btn')
 
-    expect(wrapper.text()).toContain('pessoa@teste.com')
+    expect(trigger.attributes('aria-label')).toBe('Conta de pessoa@teste.com')
+    expect(trigger.text()).toContain('pessoa@teste.com') // o nome acessível contém o texto visível
+    wrapper.unmount()
+  })
+
+  it('the account avatar shows the initial of the e-mail', async () => {
+    const { wrapper } = await mountTopbar()
+
+    expect(wrapper.find('.avatar').text()).toBe('P')
     wrapper.unmount()
   })
 
@@ -136,17 +129,6 @@ describe('Topbar (acessibilidade e mobile)', () => {
 
     expect(authService.logout).toHaveBeenCalledTimes(1)
     expect(router.currentRoute.value.path).toBe('/login')
-    wrapper.unmount()
-  })
-
-  it('the app title is a real button that goes home', async () => {
-    const { wrapper, router } = await mountTopbar()
-    await router.push('/configuracoes')
-
-    await wrapper.find('button.logo').trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.path).toBe('/')
     wrapper.unmount()
   })
 })

@@ -32,20 +32,20 @@ describe('NoteCard (acessibilidade)', () => {
   it('the action buttons say which note they act on', () => {
     const wrapper = mountCard()
 
-    const labels = wrapper.findAll('.action-btn').map(b => b.attributes('aria-label'))
+    const labels = wrapper.findAll('.icon-action').map(b => b.attributes('aria-label'))
 
     expect(labels).toEqual([
-      'Editar nota Reunião de planejamento',
-      'Fixar nota Reunião de planejamento',
-      'Excluir nota Reunião de planejamento'
+      'Excluir nota Reunião de planejamento',
+      'Favoritar nota Reunião de planejamento'
     ])
+    expect(wrapper.find('.kebab-trigger').attributes('aria-label')).toBe('Mais ações para Reunião de planejamento')
     wrapper.unmount()
   })
 
   it('the pin action name follows the state', () => {
     const wrapper = mount(NoteCard, { props: { note: { ...note, isPinned: true } }, attachTo: document.body })
 
-    expect(wrapper.findAll('.action-btn')[1]!.attributes('aria-label')).toBe('Desfixar nota Reunião de planejamento')
+    expect(wrapper.find('.icon-action.star').attributes('aria-label')).toBe('Remover dos favoritos a nota Reunião de planejamento')
     wrapper.unmount()
   })
 
@@ -108,19 +108,21 @@ describe('NoteCard (acessibilidade)', () => {
     wrapper.unmount()
   })
 
-  it('Tab on the last control wraps to the first (focus trap)', async () => {
+  it('Tab on the last control wraps to the first, Shift+Tab on the first wraps to the last (focus trap)', async () => {
     const wrapper = mountCard()
     await wrapper.find('.note-card').trigger('click')
     await wrapper.vm.$nextTick()
 
-    // Só há um controle focável (Fechar): Tab e Shift+Tab ficam nele
+    // Controles do diálogo: Fechar (primeiro) e Editar nota (último)
     const close = wrapper.find('.close-btn').element as HTMLElement
-    close.focus()
+    const edit = wrapper.find('.btn-edit').element as HTMLElement
+
+    edit.focus()
     await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Tab' })
     expect(document.activeElement).toBe(close)
 
     await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Tab', shiftKey: true })
-    expect(document.activeElement).toBe(close)
+    expect(document.activeElement).toBe(edit)
     wrapper.unmount()
   })
 

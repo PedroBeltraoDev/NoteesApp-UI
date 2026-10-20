@@ -3,16 +3,20 @@
     <button
       ref="trigger"
       type="button"
-      class="icon-btn account-btn"
+      class="account-btn"
       aria-haspopup="menu"
       :aria-expanded="open"
       aria-controls="account-menu-panel"
-      aria-label="Conta"
-      title="Conta"
+      :aria-label="email ? `Conta de ${email}` : 'Conta'"
       @click="toggle"
       @keydown.down.prevent="openAndFocus(0)"
     >
-      <i class="pi pi-user" aria-hidden="true"></i>
+      <span class="avatar" aria-hidden="true">{{ initial }}</span>
+      <span v-if="email" class="who" aria-hidden="true">
+        <span class="who-email">{{ email }}</span>
+        <span class="who-role">Minha conta</span>
+      </span>
+      <i class="pi pi-chevron-down chevron" aria-hidden="true"></i>
     </button>
 
     <div v-if="open" id="account-menu-panel" class="account-panel" @keydown="onKeydown">
@@ -34,14 +38,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
-defineProps<{ email?: string | null }>()
+const props = defineProps<{ email?: string | null }>()
 const emit = defineEmits<{ settings: []; logout: [] }>()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
+
+const initial = computed(() => (props.email?.trim()[0] ?? '?').toUpperCase())
 
 const items = () => Array.from(root.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
 
@@ -105,6 +111,66 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
   position: relative;
 }
 
+.account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 12px 4px 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.account-btn:hover,
+.account-btn[aria-expanded='true'] {
+  background: var(--hover-bg);
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ade80, #15803d);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 160px;
+  line-height: 1.2;
+}
+
+.who-email {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.who-role {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.chevron {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .account-panel {
   position: absolute;
   right: 0;
@@ -120,13 +186,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 }
 
 .account-email {
-  margin: 0;
+  margin: 0 0 6px;
   padding: 8px 12px 10px;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,6 +215,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
   border: none;
   border-radius: 8px;
   color: var(--text-primary);
+  font: inherit;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
@@ -158,5 +224,17 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .menu-item:hover,
 .menu-item:focus-visible {
   background: var(--hover-bg);
+}
+
+/* Celular: só o avatar, para sobrar espaço ao título e à busca */
+@media (max-width: 767px) {
+  .who,
+  .chevron {
+    display: none;
+  }
+
+  .account-btn {
+    padding: 4px;
+  }
 }
 </style>

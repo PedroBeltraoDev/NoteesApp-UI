@@ -1,8 +1,8 @@
 <template>
   <div class="login-container">
     <main class="login-box">
-      <h1 class="logo">
-        <i class="pi pi-book" aria-hidden="true"></i> NoteesApp
+      <h1 class="brand">
+        <AppLogo :size="52" wordmark />
       </h1>
       <p class="subtitle">
         {{ isRegister ? 'Crie sua conta para começar' : 'Entre para acessar suas notas' }}
@@ -97,6 +97,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '@/services/authService'
 import { ApiError } from '@/services/http'
+import AppLogo from '@/components/common/AppLogo.vue'
 
 const router = useRouter()
 
@@ -200,39 +201,36 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a1a1a;
   padding: 16px;
+  background: var(--frame-bg);
 }
 
 .login-box {
-  background: #2d2d2d;
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: 40px 36px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
-.logo {
-  font-size: 32px;
-  margin: 0 0 8px 0;
-  color: #ffffff;
+.brand {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 12px;
+  margin: 0 0 8px;
 }
 
-.logo .pi-book {
-  font-size: 36px;
-  color: #3b82f6;
+.brand :deep(.wordmark) {
+  font-size: 30px;
 }
 
 .subtitle {
-  color: #a3a3a3;
-  margin: 0 0 32px 0;
+  margin: 0 0 28px;
   font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .login-form {
@@ -250,11 +248,38 @@ onMounted(() => {
   margin: 0 0 6px 2px;
   font-size: 14px;
   font-weight: 600;
-  color: #e5e5e5;
+  color: var(--text-primary);
 }
 
 .password-wrapper {
   position: relative;
+}
+
+.input-field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.input-field.invalid {
+  border-color: var(--danger);
 }
 
 .input-field.has-toggle {
@@ -273,59 +298,38 @@ onMounted(() => {
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 8px;
-  color: #a3a3a3;
+  border-radius: 10px;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .toggle-password:hover {
-  color: #ffffff;
-}
-
-.input-field {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 14px 18px;
-  border: 2px solid #444;
-  border-radius: 10px;
-  font-size: 16px;
-  background: #1a1a1a;
-  color: #fff;
-  transition: all 0.2s;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-}
-
-.input-field.invalid {
-  border-color: #dc2626;
+  color: var(--text-primary);
 }
 
 .field-error {
-  color: #f87171;
-  font-size: 13px;
   margin: 6px 4px 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 .btn-login {
-  background: #2563eb;
-  color: white;
-  border: none;
+  margin-top: 8px;
   padding: 14px 24px;
-  border-radius: 10px;
+  background: var(--accent-strong);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font: inherit;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 8px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .btn-login:hover:not(:disabled) {
-  background: #1d4ed8;
-  transform: translateY(-2px);
+  background: #166534;
+  transform: translateY(-1px);
 }
 
 .btn-login:disabled {
@@ -334,28 +338,35 @@ onMounted(() => {
 }
 
 .error-message {
-  color: #f87171;
-  font-size: 14px;
   margin: 0;
+  font-size: 14px;
+  color: var(--danger);
 }
 
 .switch-mode {
-  color: #a3a3a3;
-  font-size: 14px;
   margin: 24px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .link-button {
+  padding: 4px 2px;
   background: none;
   border: none;
-  color: #60a5fa;
+  color: var(--accent-text);
+  font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 2px;
 }
 
 .link-button:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    padding: 32px 22px;
+  }
 }
 </style>

@@ -1,19 +1,21 @@
 <template>
   <header class="topbar">
-    <div class="topbar-container">
-      <div class="topbar-left">
-        <button
-          type="button"
-          class="icon-btn menu-btn"
-          aria-label="Abrir menu de pastas e tags"
-          @click="toggleMobileMenu"
-        >
-          <i class="pi pi-bars" aria-hidden="true"></i>
-        </button>
-        <button type="button" class="logo" @click="goHome">NoteesApp</button>
-      </div>
+    <div class="topbar-left">
+      <button
+        type="button"
+        class="icon-btn menu-btn"
+        :aria-label="navOpen ? 'Fechar o menu' : 'Abrir o menu'"
+        :aria-expanded="navOpen"
+        aria-controls="app-rail"
+        @click="$emit('toggleNav')"
+      >
+        <i class="pi pi-bars" aria-hidden="true"></i>
+      </button>
+      <h1 class="page-title">{{ title }}</h1>
+    </div>
 
-      <div class="topbar-right">
+    <div class="topbar-right">
+      <template v-if="showSearch">
         <div class="search-container" role="search">
           <label for="search-desktop" class="sr-only">Buscar notas</label>
           <i class="pi pi-search search-icon" aria-hidden="true"></i>
@@ -39,33 +41,15 @@
         >
           <i :class="mobileSearchOpen ? 'pi pi-times' : 'pi pi-search'" aria-hidden="true"></i>
         </button>
+      </template>
 
-        <button
-          type="button"
-          class="icon-btn btn-theme"
-          :aria-label="isDark ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'"
-          :title="isDark ? 'Tema claro' : 'Tema escuro'"
-          @click="toggleTheme"
-        >
-          <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" aria-hidden="true"></i>
-        </button>
-
-        <PButton
-          @click="$emit('createNote')"
-          label="Nova Nota"
-          icon="pi pi-plus"
-          severity="success"
-          class="btn-new-note"
-          aria-label="Nova nota"
-        />
-
-        <AccountMenu :email="userEmail" @settings="goToSettings" @logout="handleLogout" />
-      </div>
+      <AccountMenu :email="userEmail" @settings="goToSettings" @logout="handleLogout" />
     </div>
 
-    <!-- Busca no celular: linha própria abaixo da barra -->
-    <div v-if="mobileSearchOpen" id="search-mobile" class="mobile-search" role="search">
+    <!-- Busca no celular: linha própria abaixo do cabeçalho -->
+    <div v-if="showSearch && mobileSearchOpen" id="search-mobile" class="mobile-search" role="search">
       <label for="search-mobile-input" class="sr-only">Buscar notas</label>
+      <i class="pi pi-search search-icon" aria-hidden="true"></i>
       <input
         id="search-mobile-input"
         ref="mobileSearchInput"
@@ -86,13 +70,14 @@ import { useRouter } from 'vue-router'
 import AccountMenu from './AccountMenu.vue'
 import { authService } from '@/services/authService'
 import { session } from '@/services/session'
-import { useTheme } from '@/composables/useTheme'
 
-const props = defineProps<{ search?: string }>()
-const emit = defineEmits(['createNote', 'search'])
+const props = withDefaults(
+  defineProps<{ title?: string; search?: string; showSearch?: boolean; navOpen?: boolean }>(),
+  { title: 'Notas', search: undefined, showSearch: true, navOpen: false }
+)
+const emit = defineEmits(['search', 'toggleNav'])
 
 const router = useRouter()
-const { isDark, toggle: toggleTheme } = useTheme()
 
 const searchQuery = ref(props.search ?? '')
 const mobileSearchOpen = ref(false)
@@ -105,10 +90,6 @@ watch(() => props.search, value => {
   if (value !== undefined && value !== searchQuery.value) searchQuery.value = value
 })
 
-const toggleMobileMenu = () => {
-  window.dispatchEvent(new CustomEvent('toggle-mobile-menu'))
-}
-
 const toggleMobileSearch = async () => {
   mobileSearchOpen.value = !mobileSearchOpen.value
   if (mobileSearchOpen.value) {
@@ -119,10 +100,6 @@ const toggleMobileSearch = async () => {
 
 const handleSearch = () => {
   emit('search', searchQuery.value)
-}
-
-const goHome = () => {
-  router.push('/')
 }
 
 const goToSettings = () => {
@@ -138,80 +115,53 @@ const handleLogout = async () => {
 
 <style scoped>
 .topbar {
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  width: 100%;
-}
-
-.topbar-container {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 16px 24px;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
   gap: 16px;
+  padding: 16px 20px;
 }
 
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
-}
-
-.logo {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-primary);
-  cursor: pointer;
-  margin: 0;
-  letter-spacing: -0.5px;
-  white-space: nowrap;
-  border-radius: 6px;
-}
-
+.topbar-left,
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+  gap: 14px;
+  min-width: 0;
+}
+
+.topbar-right {
   margin-left: auto;
 }
 
-/* Botões só com ícone: 40px no desktop, 44px (alvo de toque) no mobile */
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Botões só com ícone: 40px no desktop, 44px (alvo de toque) no celular */
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  color: var(--text-secondary);
+  width: 44px;
+  height: 44px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
   font-size: 18px;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .icon-btn:hover {
   background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-.menu-btn {
-  display: none;
-  color: var(--text-primary);
-  font-size: 22px;
 }
 
 .btn-search-toggle {
@@ -220,13 +170,12 @@ const handleLogout = async () => {
 
 .search-container {
   position: relative;
-  flex: 0 1 400px;
-  max-width: 400px;
+  width: 300px;
 }
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-secondary);
@@ -236,55 +185,36 @@ const handleLogout = async () => {
 .search-input {
   width: 100%;
   box-sizing: border-box;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--bg-primary);
+  height: 44px;
+  padding: 0 14px 0 40px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
-}
-
-.search-container .search-input {
-  padding-left: 36px;
 }
 
 .search-input::placeholder {
   color: var(--text-secondary);
 }
 
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
 .mobile-search {
   display: none;
-  padding: 0 16px 12px;
+  position: relative;
+  flex-basis: 100%;
 }
 
-.btn-new-note.p-button {
-  height: 40px;
-  padding: 0 20px;
-  white-space: nowrap;
-}
-
-/* ============================================
-   RESPONSIVIDADE
-   ============================================ */
-
-/* Tablet */
-@media (max-width: 1024px) {
-  .topbar-container {
-    padding: 16px 20px;
-  }
-
-  .search-container {
-    flex: 0 1 300px;
-    max-width: 300px;
-  }
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .menu-btn {
-    display: inline-flex;
+@media (max-width: 767px) {
+  .topbar {
+    padding: 12px 14px;
+    gap: 12px;
   }
 
   .search-container {
@@ -299,43 +229,9 @@ const handleLogout = async () => {
     display: block;
   }
 
-  .icon-btn {
-    width: 44px;
-    height: 44px;
-  }
-
-  .logo {
-    font-size: 20px;
-  }
-
-  .btn-new-note.p-button {
-    width: 44px;
-    height: 44px;
-    padding: 0;
-  }
-
-  .btn-new-note :deep(.p-button-label) {
-    display: none;
-  }
-
-  .topbar-container {
-    padding: 12px 16px;
-  }
-}
-
-/* Mobile pequeno */
-@media (max-width: 480px) {
-  .topbar-container {
-    padding: 12px;
-    gap: 8px;
-  }
-
+  .topbar-left,
   .topbar-right {
-    gap: 4px;
-  }
-
-  .logo {
-    font-size: 18px;
+    gap: 10px;
   }
 }
 </style>

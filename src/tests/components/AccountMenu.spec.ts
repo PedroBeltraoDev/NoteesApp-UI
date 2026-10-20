@@ -9,7 +9,7 @@ describe('AccountMenu', () => {
     const wrapper = mountMenu()
     const trigger = wrapper.find('button.account-btn')
 
-    expect(trigger.attributes('aria-label')).toBe('Conta')
+    expect(trigger.attributes('aria-label')).toBe('Conta de pessoa@teste.com')
     expect(trigger.attributes('aria-haspopup')).toBe('menu')
     expect(trigger.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('[role="menu"]').exists()).toBe(false)

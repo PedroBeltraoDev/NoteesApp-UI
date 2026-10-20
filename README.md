@@ -22,7 +22,8 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 
 - ✅ **CRUD Completo** de notas
 - ✅ **Organização por Pastas** e Tags
-- ✅ **Notas Fixadas** (pin/unpin)
+- ✅ **Favoritas**: estrela em cada nota e aba "Favoritas" (as favoritas sempre aparecem primeiro)
+- ✅ **Visual em verde**: barra lateral de ícones, cabeçalho com busca e conta, abas, grade de cartões coloridos por pasta
 - ✅ **Busca em tempo real** em título, conteúdo, tags e pasta, sem diferenciar maiúsculas nem acentos (também no celular)
 - ✅ **Filtros** por pasta e tag
 - ✅ **Tema Claro, Escuro ou Sistema** (uma única preferência, salva e aplicada antes de a tela aparecer)
@@ -87,14 +88,18 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 ```
 src/
 ├── components/
+│   ├── common/
+│   │   ├── AppLogo.vue      # logo (placa verde com duas folhas de nota) com ou sem o nome
+│   │   └── KebabMenu.vue    # menu ⋮ acessível (setas, Esc, clique fora)
 │   ├── layout/
-│   │   ├── Topbar.vue
-│   │   ├── AccountMenu.vue   # menu da conta acessível (teclado, Esc, clique fora)
-│   │   └── Sidebar.vue
+│   │   ├── AppShell.vue     # moldura + barra lateral + cabeçalho + painel (usado por todas as telas logadas)
+│   │   ├── NavRail.vue      # barra lateral de ícones (gaveta no celular)
+│   │   ├── FilterFlyout.vue # painel de pastas/tags ao lado da barra
+│   │   ├── Topbar.vue       # título da página, busca e conta
+│   │   └── AccountMenu.vue  # menu da conta acessível
 │   └── notes/
 │       ├── NoteCard.vue
-│       ├── NoteFormModal.vue
-│       └── NoteCardSkeleton.vue
+│       └── NoteFormModal.vue
 ├── views/
 │   ├── DashboardView.vue
 │   ├── LoginView.vue
@@ -313,35 +318,13 @@ describe('NoteCard', () => {
 
 ## 🎨 Design System
 
-### Cores (CSS Variables)
-
-```css
-:root {
-  /* Light Mode */
-  --bg-primary: #f8f7f4;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f0f0;
-  --text-primary: #1a1a1a;
-  --text-secondary: #666666;
-  --text-tertiary: #999999;
-  --border-color: #e0e0e0;
-  --accent-color: #3b82f6;
-  --hover-bg: #f5f5f5;
-}
-
-.dark-mode {
-  /* Dark Mode */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --bg-tertiary: #3d3d3d;
-  --text-primary: #ffffff;
-  --text-secondary: #cccccc;
-  --text-tertiary: #888888;
-  --border-color: #444444;
-  --accent-color: #60a5fa;
-  --hover-bg: #3d3d3d;
-}
-```
+- **Marca**: logo em `public/logo.svg` e `public/favicon.svg` (também como componente `AppLogo`). Verde `#22c55e`/`#15803d`.
+- **Tokens**: todas as cores, raios e medidas do shell estão em `src/styles/variables.css`, nos temas escuro (padrão)
+  e claro. Camadas: moldura → barra lateral → fundo → painel → card.
+- **Cores de categoria**: cada pasta tem sempre a mesma cor (borda do cartão e avatar), definida em `utils/noteColor.ts`
+  a partir de `--note-green`, `--note-sky`, `--note-amber`, `--note-violet`, `--note-coral` e `--note-teal`. Notas sem pasta usam o verde da marca.
+- **Estrutura**: `AppShell` (barra lateral de ícones 72 px, expansível para 232 px com rótulos) + cabeçalho + painel
+  com abas "Todas as notas / Favoritas" e botão "Nova nota". No celular a barra vira uma gaveta e a busca abre abaixo do cabeçalho.
 
 ## 🔒 Segurança
 

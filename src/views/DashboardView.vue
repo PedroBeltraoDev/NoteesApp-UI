@@ -1,87 +1,114 @@
 <template>
-  <div class="dashboard">
-    <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
-    <Topbar :search="searchQuery" @search="handleSearch" @createNote="handleCreateNote" />
+  <AppShell
+    title="Notas"
+    :search="searchQuery"
+    :showSearch="true"
+    :showFilters="true"
+    :folders="folders"
+    :tags="tags"
+    :selectedFolder="selectedFolder"
+    :selectedTag="selectedTag"
+    @search="handleSearch"
+    @selectFolder="selectFolder"
+    @selectTag="selectTag"
+    @clearFilters="clearFilters"
+  >
+    <div class="tabs-bar">
+      <div class="tabs" role="tablist" aria-label="Visualização das notas" @keydown="onTabKeydown">
+        <button
+          v-for="tab in tabs"
+          :id="`tab-${tab.key}`"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          class="tab"
+          :class="{ active: view === tab.key }"
+          :aria-selected="view === tab.key"
+          :tabindex="view === tab.key ? 0 : -1"
+          aria-controls="notes-panel"
+          @click="view = tab.key"
+        >
+          <i :class="tab.icon" aria-hidden="true"></i>
+          {{ tab.label }}
+          <span class="tab-count" aria-hidden="true">{{ tab.count }}</span>
+          <span class="sr-only">({{ tab.count }})</span>
+        </button>
+      </div>
 
-    <div class="main-container">
-      <!-- Sidebar -->
-      <Sidebar
-        ref="sidebarRef"
-        :folders="folders"
-        :tags="tags"
-        :selectedFolder="selectedFolder"
-        :selectedTag="selectedTag"
-        @selectFolder="selectFolder"
-        @selectTag="selectTag"
-        @clearFilters="clearFilters"
-        v-model:mobileOpen="isMobileMenuOpen"
-      />
+      <button type="button" class="btn-add" @click="handleCreateNote">
+        <i class="pi pi-plus" aria-hidden="true"></i> Nova nota
+      </button>
+    </div>
 
-      <!-- Conteúdo Principal -->
-      <main class="content" id="conteudo" tabindex="-1">
-        <div class="workspace-header">
-          <div class="header-left">
-            <h1 class="workspace-title">Minhas Notas</h1>
-            <span v-if="activeFilter" class="active-filter">
-              Filtrando por: {{ activeFilter }}
-              <button
-                @click="clearFilters"
-                class="clear-filter"
-                type="button"
-                aria-label="Remover filtro"
-                title="Remover filtro"
-              >
-                <i class="pi pi-times" aria-hidden="true"></i>
-              </button>
-            </span>
-          </div>
-        </div>
+    <div v-if="activeFilter" class="filter-row">
+      <span class="active-filter">
+        Filtrando por: {{ activeFilter }}
+        <button
+          @click="clearFilters"
+          class="clear-filter"
+          type="button"
+          aria-label="Remover filtro"
+          title="Remover filtro"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </span>
+    </div>
 
-        <div v-if="isLoading" class="loading" role="status" aria-live="polite">
-          <div class="spinner" aria-hidden="true"></div>
-          <p>Carregando notas...</p>
-        </div>
+    <div id="notes-panel" role="tabpanel" :aria-labelledby="`tab-${view}`">
+      <div v-if="isLoading" class="loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Carregando notas...</p>
+      </div>
 
-        <!-- Nenhuma nota ainda (conta nova) -->
-        <div v-else-if="notes.length === 0 && !activeFilter" class="empty-state">
-          <h2>
-            <i class="pi pi-file-edit" aria-hidden="true"></i> Nenhuma nota ainda
-          </h2>
-          <p>Crie sua primeira nota para começar a organizar suas ideias.</p>
-          <button type="button" class="empty-action" @click="handleCreateNote">
-            <i class="pi pi-plus" aria-hidden="true"></i> Criar primeira nota
-          </button>
-        </div>
+      <!-- Nenhuma nota ainda (conta nova) -->
+      <div v-else-if="notes.length === 0 && !activeFilter" class="empty-state">
+        <h2>
+          <i class="pi pi-file-edit" aria-hidden="true"></i> Nenhuma nota ainda
+        </h2>
+        <p>Crie sua primeira nota para começar a organizar suas ideias.</p>
+        <button type="button" class="empty-action primary" @click="handleCreateNote">
+          <i class="pi pi-plus" aria-hidden="true"></i> Criar primeira nota
+        </button>
+      </div>
 
-        <!-- Pasta ou tag sem notas -->
-        <div v-else-if="notes.length === 0" class="empty-state">
-          <h2>
-            <i class="pi pi-filter-slash" aria-hidden="true"></i> Nada em {{ activeFilter }}
-          </h2>
-          <p>Não há notas com esse filtro.</p>
-          <button type="button" class="empty-action" @click="clearFilters">Ver todas as notas</button>
-        </div>
+      <!-- Pasta ou tag sem notas -->
+      <div v-else-if="notes.length === 0" class="empty-state">
+        <h2>
+          <i class="pi pi-filter-slash" aria-hidden="true"></i> Nada em {{ activeFilter }}
+        </h2>
+        <p>Não há notas com esse filtro.</p>
+        <button type="button" class="empty-action" @click="clearFilters">Ver todas as notas</button>
+      </div>
 
-        <!-- A busca não encontrou nada -->
-        <div v-else-if="visibleNotes.length === 0" class="empty-state" role="status">
-          <h2>
-            <i class="pi pi-search" aria-hidden="true"></i> Nenhum resultado
-          </h2>
-          <p>Nada encontrado para “{{ searchQuery }}”. Confira a grafia ou tente outras palavras.</p>
-          <button type="button" class="empty-action" @click="clearSearch">Limpar busca</button>
-        </div>
+      <!-- Aba Favoritas vazia -->
+      <div v-else-if="view === 'favorites' && favoritesCount === 0" class="empty-state">
+        <h2>
+          <i class="pi pi-star" aria-hidden="true"></i> Nenhuma favorita ainda
+        </h2>
+        <p>Toque na estrela de uma nota para ela aparecer aqui.</p>
+        <button type="button" class="empty-action" @click="view = 'all'">Ver todas as notas</button>
+      </div>
 
-        <div v-else class="notes-grid">
-          <NoteCard
-            v-for="note in visibleNotes"
-            :key="note.id"
-            :note="note"
-            @edit="handleEditNote"
-            @delete="handleDeleteNote"
-            @togglePin="handleTogglePin"
-          />
-        </div>
-      </main>
+      <!-- A busca não encontrou nada -->
+      <div v-else-if="visibleNotes.length === 0" class="empty-state" role="status">
+        <h2>
+          <i class="pi pi-search" aria-hidden="true"></i> Nenhum resultado
+        </h2>
+        <p>Nada encontrado para “{{ searchQuery }}”. Confira a grafia ou tente outras palavras.</p>
+        <button type="button" class="empty-action" @click="clearSearch">Limpar busca</button>
+      </div>
+
+      <div v-else class="notes-grid">
+        <NoteCard
+          v-for="note in visibleNotes"
+          :key="note.id"
+          :note="note"
+          @edit="handleEditNote"
+          @delete="handleDeleteNote"
+          @togglePin="handleTogglePin"
+        />
+      </div>
     </div>
 
     <NoteFormModal
@@ -91,19 +118,20 @@
       @close="closeModal"
       @saved="saveNote"
     />
-  </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import Topbar from '../components/layout/Topbar.vue'
-import Sidebar from '../components/layout/Sidebar.vue'
+import { ref, onMounted, computed } from 'vue'
+import AppShell from '../components/layout/AppShell.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 import { api } from '@/services/api'
 import { filterNotes } from '@/utils/search'
 import { ApiError } from '@/services/http'
 import { useToast } from 'primevue/usetoast'
+
+type View = 'all' | 'favorites'
 
 // DECLARAÇÕES
 const notes = ref<any[]>([])
@@ -115,9 +143,8 @@ const editingNote = ref<any>(null)
 const searchQuery = ref('')
 const selectedFolder = ref<string | null>(null)
 const selectedTag = ref<string | null>(null)
-const sidebarRef = ref<any>(null)
+const view = ref<View>('all')
 const toast = useToast()
-const isMobileMenuOpen = ref(false)
 
 // COMPUTED
 const activeFilter = computed(() => {
@@ -126,17 +153,48 @@ const activeFilter = computed(() => {
   return null
 })
 
+// Favoritas primeiro, depois as mais recentes
 const sortedNotes = computed(() => {
-  let sorted = [...notes.value]
-  
+  const sorted = [...notes.value]
+
   sorted.sort((a: any, b: any) => {
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
-  
+
   return sorted
 })
+
+const favoritesCount = computed(() => notes.value.filter(n => n.isPinned).length)
+
+const tabs = computed(() => [
+  { key: 'all' as const, label: 'Todas as notas', icon: 'pi pi-file', count: notes.value.length },
+  { key: 'favorites' as const, label: 'Favoritas', icon: 'pi pi-star', count: favoritesCount.value }
+])
+
+// Busca: filtra uma cópia, então apagar letras traz as notas de volta
+const visibleNotes = computed(() => {
+  const base = view.value === 'favorites' ? sortedNotes.value.filter(n => n.isPinned) : sortedNotes.value
+  return filterNotes(base, searchQuery.value)
+})
+
+// Setas, Home e End movem entre as abas (padrão de abas acessíveis)
+const onTabKeydown = (event: KeyboardEvent) => {
+  const order = tabs.value.map(t => t.key)
+  const current = order.indexOf(view.value)
+  let next = current
+
+  if (event.key === 'ArrowRight') next = (current + 1) % order.length
+  else if (event.key === 'ArrowLeft') next = (current - 1 + order.length) % order.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = order.length - 1
+  else return
+
+  event.preventDefault()
+  view.value = order[next]!
+  document.getElementById(`tab-${order[next]}`)?.focus()
+}
 
 // Falha de sessão (401) já é tratada redirecionando para o login: não precisa de toast.
 // Qualquer outro erro da API (rede fora, servidor dormindo, 5xx) aparece para o usuário.
@@ -148,23 +206,14 @@ const notifyError = (error: unknown, fallback: string) => {
   toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage(error, fallback), life: 5000 })
 }
 
-// Busca: filtra uma cópia, então apagar letras traz as notas de volta
-const visibleNotes = computed(() => filterNotes(sortedNotes.value, searchQuery.value))
-
 const clearSearch = () => {
   searchQuery.value = ''
 }
 
-// Notas, pastas e tags andam juntas: criar/excluir uma nota pode criar ou fazer sumir uma pasta ou tag
-const refreshAll = () => Promise.all([loadNotes(), loadFolders(), loadTags()])
-
 const loadNotes = async () => {
   try {
     isLoading.value = true
-    notes.value = await api.getNotes(
-      selectedFolder.value ?? undefined, 
-      selectedTag.value ?? undefined
-    )
+    notes.value = await api.getNotes(selectedFolder.value ?? undefined, selectedTag.value ?? undefined)
   } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
@@ -192,6 +241,9 @@ const loadTags = async () => {
   }
 }
 
+// Notas, pastas e tags andam juntas: criar/excluir uma nota pode criar ou fazer sumir uma pasta ou tag
+const refreshAll = () => Promise.all([loadNotes(), loadFolders(), loadTags()])
+
 const selectFolder = (folder: string) => {
   selectedFolder.value = folder
   selectedTag.value = null
@@ -210,14 +262,13 @@ const clearFilters = () => {
   loadNotes()
 }
 
-
 const handleCreateNote = () => {
-  editingNote.value = null 
+  editingNote.value = null
   isModalOpen.value = true
 }
 
 const handleEditNote = (note: any) => {
-  editingNote.value = note 
+  editingNote.value = note
   isModalOpen.value = true
 }
 
@@ -247,7 +298,7 @@ const handleTogglePin = async (id: number) => {
       toast.add({
         severity: 'info',
         summary: 'Atualizado!',
-        detail: note.isPinned ? 'Nota desfixada' : 'Nota fixada',
+        detail: note.isPinned ? 'Removida dos favoritos' : 'Adicionada aos favoritos',
         life: 3000
       })
       await loadNotes()
@@ -292,100 +343,139 @@ const handleSearch = (query: string) => {
 
 const closeModal = () => {
   isModalOpen.value = false
-  editingNote.value = null 
+  editingNote.value = null
 }
 
-const handleToggleMobileMenu = () => {
-  if (sidebarRef.value?.openMenu) {
-    sidebarRef.value.openMenu()
-  }
-}
-
-onMounted(async () => {
-  await Promise.all([loadNotes(), loadFolders(), loadTags()])
-  window.addEventListener('toggle-mobile-menu', handleToggleMobileMenu)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('toggle-mobile-menu', handleToggleMobileMenu)
-})
+onMounted(refreshAll)
 </script>
 
 <style scoped>
-.dashboard {
-  min-height: 100vh;
-  background: var(--bg-primary);
+/* Abas + botão de criar (como no topo do painel de referência) */
+.tabs-bar {
   display: flex;
-  flex-direction: column;
-}
-
-.main-container {
-  display: flex;
-  flex: 1;
-  min-height: calc(100vh - 73px);
-  position: relative;
-}
-
-.content {
-  flex: 1;
-  margin-left: 280px; 
-  padding: 24px 24px;
-  overflow-y: auto;
-  background: var(--bg-primary);
-  min-height: calc(100vh - 73px);
-}
-
-.workspace-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
   border-bottom: 1px solid var(--border-color);
 }
 
-.workspace-title {
-  font-size: 24px;
-  font-weight: 700;
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tab:hover {
   color: var(--text-primary);
-  margin: 0;
-  letter-spacing: -0.5px;
+}
+
+.tab.active {
+  color: var(--accent-text);
+  border-bottom-color: var(--accent-color);
+}
+
+.tab .pi {
+  font-size: 16px;
+}
+
+.tab-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.tab.active .tab-count {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 6px;
+  padding: 0 18px;
+  background: var(--accent-strong);
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-add:hover {
+  background: #166534;
+}
+
+.btn-add:active {
+  transform: translateY(1px);
+}
+
+.filter-row {
+  margin-bottom: 16px;
 }
 
 .active-filter {
-  background: #2563eb;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  animation: fadeIn var(--transition-fast);
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
+  border-radius: 999px;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .clear-filter {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 11px;
-  transition: background var(--transition-fast);
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+}
+
+.clear-filter:hover {
+  background: var(--accent-soft);
 }
 
 .clear-filter .pi-times {
   font-size: 12px;
-}
-
-.clear-filter:hover {
-  background: rgba(255, 255, 255, 0.4);
 }
 
 .loading {
@@ -393,7 +483,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 320px;
   color: var(--text-secondary);
 }
 
@@ -413,48 +503,43 @@ onUnmounted(() => {
 
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
-  animation: fadeIn var(--transition-normal);
+  padding: 56px 20px;
 }
 
 .empty-state h2 {
-  font-size: 20px;
-  margin-bottom: 8px;
-  color: var(--text-primary);
-  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.empty-state h2 .pi-file-edit {
+.empty-state h2 .pi {
   font-size: 24px;
   color: var(--accent-text);
 }
 
 .empty-state p {
+  margin: 0;
   font-size: 14px;
   color: var(--text-secondary);
 }
 
-.empty-state h2 .pi-search,
-.empty-state h2 .pi-filter-slash {
-  font-size: 24px;
-  color: var(--accent-text);
-}
-
 .empty-action {
-  margin-top: 16px;
-  min-height: 44px;
-  padding: 0 20px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
+  margin-top: 18px;
+  padding: 0 20px;
   background: transparent;
-  color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -465,60 +550,49 @@ onUnmounted(() => {
   background: var(--hover-bg);
 }
 
-.content:focus {
-  outline: none;
+.empty-action.primary {
+  background: var(--accent-strong);
+  border-color: transparent;
+  color: #ffffff;
 }
 
+.empty-action.primary:hover {
+  background: #166534;
+}
+
+/* Grade: 1 coluna no celular, até 4 no desktop largo */
 .notes-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 
-/* Tablet */
-@media (min-width: 641px) {
-  .notes-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+@media (max-width: 767px) {
+  /* Botão de criar em largura total no topo; as abas ficam logo abaixo, com a linha de base */
+  .tabs-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
-}
 
-/* Desktop */
-@media (min-width: 1025px) {
-  .content {
-    padding: 32px 32px;
+  .btn-add {
+    order: -1;
+    justify-content: center;
+    margin-bottom: 4px;
   }
-  
-  .notes-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-  }
-}
 
-/* Large Desktop */
-@media (min-width: 1400px) {
-  .notes-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .tabs {
+    width: 100%;
   }
-}
 
-/* Mobile - sidebar escondida */
-@media (max-width: 768px) {
-  .content {
-    margin-left: 0;
-    padding: 16px 16px;
+  .tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0 8px;
   }
-  
+
   .notes-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
-  }
-}
-
-@media (max-width: 768px) {
-  .content {
-    margin-left: 0;
-    padding: 16px 16px;
   }
 }
 </style>
