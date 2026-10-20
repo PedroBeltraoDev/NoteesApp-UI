@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { initTheme } from './composables/useTheme'
 
 import './styles/variables.css'
 import './styles/global.css'
@@ -23,6 +24,9 @@ import Toast from 'primevue/toast'
 import Card from 'primevue/card'
 import Drawer from 'primevue/drawer'
 
+// Aplica o tema antes de montar, para não piscar o tema errado
+initTheme()
+
 const app = createApp(App)
 
 app.use(router)
@@ -30,7 +34,8 @@ app.use(PrimeVue, {
   theme: {
     preset: Aura,
     options: {
-      darkModeSelector: 'body',
+      // Os componentes do PrimeVue ficam escuros só quando o <body> tem .dark-mode
+      darkModeSelector: '.dark-mode',
       cssLayer: false
     }
   }

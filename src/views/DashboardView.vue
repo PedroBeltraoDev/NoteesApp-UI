@@ -1,51 +1,80 @@
 <template>
   <div class="dashboard">
-    <Topbar @search="handleSearch" @createNote="handleCreateNote" />
-    
+    <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+    <Topbar :search="searchQuery" @search="handleSearch" @createNote="handleCreateNote" />
+
     <div class="main-container">
       <!-- Sidebar -->
-      <Sidebar 
+      <Sidebar
         ref="sidebarRef"
         :folders="folders"
         :tags="tags"
         :selectedFolder="selectedFolder"
         :selectedTag="selectedTag"
-        @selectFolder="selectFolder" 
+        @selectFolder="selectFolder"
         @selectTag="selectTag"
         @clearFilters="clearFilters"
         v-model:mobileOpen="isMobileMenuOpen"
       />
-      
+
       <!-- Conteúdo Principal -->
-      <main class="content">
+      <main class="content" id="conteudo" tabindex="-1">
         <div class="workspace-header">
           <div class="header-left">
-            <h2 class="workspace-title">Minhas Notas</h2>
+            <h1 class="workspace-title">Minhas Notas</h1>
             <span v-if="activeFilter" class="active-filter">
               Filtrando por: {{ activeFilter }}
-              <button @click="clearFilters" class="clear-filter">
-                <i class="pi pi-times"></i>
+              <button
+                @click="clearFilters"
+                class="clear-filter"
+                type="button"
+                aria-label="Remover filtro"
+                title="Remover filtro"
+              >
+                <i class="pi pi-times" aria-hidden="true"></i>
               </button>
             </span>
           </div>
         </div>
-        
-        <div v-if="isLoading" class="loading">
-          <div class="spinner"></div>
+
+        <div v-if="isLoading" class="loading" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
           <p>Carregando notas...</p>
         </div>
-        
+
+        <!-- Nenhuma nota ainda (conta nova) -->
+        <div v-else-if="notes.length === 0 && !activeFilter" class="empty-state">
+          <h2>
+            <i class="pi pi-file-edit" aria-hidden="true"></i> Nenhuma nota ainda
+          </h2>
+          <p>Crie sua primeira nota para começar a organizar suas ideias.</p>
+          <button type="button" class="empty-action" @click="handleCreateNote">
+            <i class="pi pi-plus" aria-hidden="true"></i> Criar primeira nota
+          </button>
+        </div>
+
+        <!-- Pasta ou tag sem notas -->
         <div v-else-if="notes.length === 0" class="empty-state">
           <h2>
-            <i class="pi pi-file-edit"></i> Nenhuma nota ainda
+            <i class="pi pi-filter-slash" aria-hidden="true"></i> Nada em {{ activeFilter }}
           </h2>
-          <p>Clique em "Nova Nota" para criar sua primeira nota!</p>
+          <p>Não há notas com esse filtro.</p>
+          <button type="button" class="empty-action" @click="clearFilters">Ver todas as notas</button>
         </div>
-        
+
+        <!-- A busca não encontrou nada -->
+        <div v-else-if="visibleNotes.length === 0" class="empty-state" role="status">
+          <h2>
+            <i class="pi pi-search" aria-hidden="true"></i> Nenhum resultado
+          </h2>
+          <p>Nada encontrado para “{{ searchQuery }}”. Confira a grafia ou tente outras palavras.</p>
+          <button type="button" class="empty-action" @click="clearSearch">Limpar busca</button>
+        </div>
+
         <div v-else class="notes-grid">
-          <NoteCard 
-            v-for="note in sortedNotes" 
-            :key="note.id" 
+          <NoteCard
+            v-for="note in visibleNotes"
+            :key="note.id"
             :note="note"
             @edit="handleEditNote"
             @delete="handleDeleteNote"
@@ -54,11 +83,12 @@
         </div>
       </main>
     </div>
-    
-    <NoteFormModal 
-      :isOpen="isModalOpen" 
-      :note="editingNote" 
-      @close="closeModal" 
+
+    <NoteFormModal
+      :isOpen="isModalOpen"
+      :note="editingNote"
+      :folders="folders"
+      @close="closeModal"
       @saved="saveNote"
     />
   </div>
@@ -71,6 +101,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 import { api } from '@/services/api'
+import { filterNotes } from '@/utils/search'
 import { ApiError } from '@/services/http'
 import { useToast } from 'primevue/usetoast'
 
@@ -116,6 +147,16 @@ const notifyError = (error: unknown, fallback: string) => {
   if (error instanceof ApiError && error.status === 401) return
   toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage(error, fallback), life: 5000 })
 }
+
+// Busca: filtra uma cópia, então apagar letras traz as notas de volta
+const visibleNotes = computed(() => filterNotes(sortedNotes.value, searchQuery.value))
+
+const clearSearch = () => {
+  searchQuery.value = ''
+}
+
+// Notas, pastas e tags andam juntas: criar/excluir uma nota pode criar ou fazer sumir uma pasta ou tag
+const refreshAll = () => Promise.all([loadNotes(), loadFolders(), loadTags()])
 
 const loadNotes = async () => {
   try {
@@ -190,7 +231,7 @@ const handleDeleteNote = async (id: number) => {
         detail: 'Nota excluída com sucesso!',
         life: 3000
       })
-      await loadNotes()
+      await refreshAll()
     } catch (error: any) {
       console.error('Erro ao excluir nota:', error)
       notifyError(error, 'Erro ao excluir nota')
@@ -237,7 +278,7 @@ const saveNote = async (noteData: any) => {
       })
     }
 
-    await Promise.all([loadNotes(), loadTags()])
+    await refreshAll()
     closeModal()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
@@ -247,15 +288,6 @@ const saveNote = async (noteData: any) => {
 
 const handleSearch = (query: string) => {
   searchQuery.value = query
-  if (query.trim() === '') {
-    loadNotes()
-  } else {
-    const filtered = notes.value.filter(n => 
-      n.title.toLowerCase().includes(query.toLowerCase()) ||
-      n.content.toLowerCase().includes(query.toLowerCase())
-    )
-    notes.value = filtered
-  }
 }
 
 const closeModal = () => {
@@ -321,7 +353,7 @@ onUnmounted(() => {
 }
 
 .active-filter {
-  background: var(--accent-color);
+  background: #2563eb;
   color: white;
   padding: 6px 12px;
   border-radius: 6px;
@@ -398,12 +430,43 @@ onUnmounted(() => {
 
 .empty-state h2 .pi-file-edit {
   font-size: 24px;
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 .empty-state p {
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.empty-state h2 .pi-search,
+.empty-state h2 .pi-filter-slash {
+  font-size: 24px;
+  color: var(--accent-text);
+}
+
+.empty-action {
+  margin-top: 16px;
+  min-height: 44px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.empty-action:hover {
+  background: var(--hover-bg);
+}
+
+.content:focus {
+  outline: none;
 }
 
 .notes-grid {

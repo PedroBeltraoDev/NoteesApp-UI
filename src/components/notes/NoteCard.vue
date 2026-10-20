@@ -1,9 +1,11 @@
 <template>
   <div class="note-card" :class="{ pinned: note.isPinned }" @click="openFullNote">
     <div class="note-header" @click.stop>
-      <h3 class="note-title">{{ note.title }}</h3>
+      <h3 class="note-title">
+        <button type="button" class="note-open" @click="openFullNote">{{ note.title }}</button>
+      </h3>
       <span v-if="note.isPinned" class="pin-badge">
-        <i class="pi pi-thumbtack"></i> Fixada
+        <i class="pi pi-thumbtack" aria-hidden="true"></i> Fixada
       </span>
     </div>
     
@@ -21,14 +23,20 @@
     <div class="note-footer" @click.stop>
       <span class="note-date">{{ formatDate(note.createdAt) }}</span>
       <div class="note-actions">
-        <button @click="$emit('edit', note)" class="action-btn" title="Editar">
-          <i class="pi pi-pencil"></i> Editar
+        <button type="button" @click="$emit('edit', note)" class="action-btn" title="Editar" :aria-label="`Editar nota ${note.title}`">
+          <i class="pi pi-pencil" aria-hidden="true"></i> Editar
         </button>
-        <button @click="$emit('togglePin', note.id)" class="action-btn" :title="note.isPinned ? 'Desfixar' : 'Fixar'">
-          <i class="pi pi-thumbtack"></i> {{ note.isPinned ? 'Desfixar' : 'Fixar' }}
+        <button
+          type="button"
+          @click="$emit('togglePin', note.id)"
+          class="action-btn"
+          :title="note.isPinned ? 'Desfixar' : 'Fixar'"
+          :aria-label="`${note.isPinned ? 'Desfixar' : 'Fixar'} nota ${note.title}`"
+        >
+          <i class="pi pi-thumbtack" aria-hidden="true"></i> {{ note.isPinned ? 'Desfixar' : 'Fixar' }}
         </button>
-        <button @click="$emit('delete', note.id)" class="action-btn delete" title="Excluir">
-          <i class="pi pi-trash"></i> Excluir
+        <button type="button" @click="$emit('delete', note.id)" class="action-btn delete" title="Excluir" :aria-label="`Excluir nota ${note.title}`">
+          <i class="pi pi-trash" aria-hidden="true"></i> Excluir
         </button>
       </div>
     </div>
@@ -36,11 +44,20 @@
   
   <!-- Modal de Visualização Completa -->
   <div v-if="isModalOpen" class="modal-overlay" @click="closeModal">
-    <div class="modal-full" @click.stop>
+    <div
+      ref="dialogEl"
+      class="modal-full"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+      @click.stop
+      @keydown="onDialogKeydown"
+    >
       <div class="modal-header">
-        <h2>{{ note.title }}</h2>
-        <button @click="closeModal" class="close-btn">
-          <i class="pi pi-times"></i>
+        <h2 :id="titleId">{{ note.title }}</h2>
+        <button ref="closeBtn" type="button" @click="closeModal" class="close-btn" aria-label="Fechar" title="Fechar">
+          <i class="pi pi-times" aria-hidden="true"></i>
         </button>
       </div>
       <div class="modal-body">
@@ -55,7 +72,7 @@
         <div class="note-full-footer">
           <span class="note-date">{{ formatDate(note.createdAt) }}</span>
           <span v-if="note.folder" class="note-folder">
-            <i class="pi pi-folder"></i> {{ note.folder }}
+            <i class="pi pi-folder" aria-hidden="true"></i> {{ note.folder }}
           </span>
         </div>
       </div>
@@ -64,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{
   note: {
@@ -81,6 +98,11 @@ const props = defineProps<{
 defineEmits(['edit', 'delete', 'togglePin'])
 
 const isModalOpen = ref(false)
+const dialogEl = ref<HTMLElement | null>(null)
+const closeBtn = ref<HTMLButtonElement | null>(null)
+const titleId = computed(() => `note-dialog-title-${props.note.id}`)
+
+let previouslyFocused: HTMLElement | null = null
 
 const truncatedContent = computed(() => {
   if (props.note.content.length <= 150) {
@@ -105,6 +127,53 @@ const openFullNote = () => {
 const closeModal = () => {
   isModalOpen.value = false
 }
+
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+
+// Esc fecha e Tab/Shift+Tab ficam presos dentro do diálogo
+const onDialogKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    closeModal()
+    return
+  }
+
+  if (event.key !== 'Tab' || !dialogEl.value) return
+
+  const focusable = Array.from(dialogEl.value.querySelectorAll<HTMLElement>(FOCUSABLE))
+  if (focusable.length === 0) return
+
+  const first = focusable[0]!
+  const last = focusable[focusable.length - 1]!
+  const active = document.activeElement
+
+  if (event.shiftKey && (active === first || active === dialogEl.value)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+// Ao abrir: trava a rolagem da página e leva o foco ao diálogo. Ao fechar: devolve o foco a quem abriu.
+watch(isModalOpen, async open => {
+  if (open) {
+    previouslyFocused = document.activeElement as HTMLElement | null
+    document.body.style.overflow = 'hidden'
+    await nextTick()
+    closeBtn.value?.focus()
+  } else {
+    document.body.style.overflow = ''
+    previouslyFocused?.focus?.()
+    previouslyFocused = null
+  }
+})
+
+onBeforeUnmount(() => {
+  if (isModalOpen.value) document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>
@@ -141,6 +210,23 @@ const closeModal = () => {
   margin: 0;
   flex: 1;
   letter-spacing: -0.3px;
+}
+
+.note-open {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.note-open:hover {
+  text-decoration: underline;
 }
 
 .pin-badge {
@@ -242,6 +328,14 @@ const closeModal = () => {
   color: #dc2626;
 }
 
+/* Alvos de toque de 44px em telas pequenas e dispositivos de toque */
+@media (max-width: 768px), (pointer: coarse) {
+  .action-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+}
+
 /* Modal Full Screen */
 .modal-overlay {
   position: fixed;
@@ -309,8 +403,8 @@ const closeModal = () => {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;

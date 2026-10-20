@@ -4,14 +4,15 @@
       <!-- Pastas -->
       <div class="sidebar-section">
         <h2 class="sidebar-title">PASTAS</h2>
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" aria-label="Pastas">
           <button 
             v-for="folder in folders" 
             :key="folder"
             @click="selectFolder(folder)"
             :class="['nav-item', { active: selectedFolder === folder }]"
+            :aria-pressed="selectedFolder === folder"
           >
-            <i class="pi pi-folder folder-icon"></i>
+            <i class="pi pi-folder folder-icon" aria-hidden="true"></i>
             {{ folder }}
           </button>
         </nav>
@@ -20,14 +21,15 @@
       <!-- Tags -->
       <div class="sidebar-section">
         <h2 class="sidebar-title">TAGS</h2>
-        <nav class="sidebar-nav" v-if="tags && tags.length > 0">
+        <nav class="sidebar-nav" aria-label="Tags" v-if="tags && tags.length > 0">
           <button 
             v-for="tag in tags" 
             :key="tag"
             @click="selectTag(tag)"
             :class="['nav-item tag-item', { active: selectedTag === tag }]"
+            :aria-pressed="selectedTag === tag"
           >
-            <i class="pi pi-hashtag tag-icon"></i>
+            <i class="pi pi-hashtag tag-icon" aria-hidden="true"></i>
             {{ tag }}
           </button>
         </nav>
@@ -64,21 +66,23 @@
   >
     <template #header>
       <div class="sidebar-header">
-        <h2 class="sidebar-title">PASTAS</h2>
+        <h2 class="sidebar-title">Filtros</h2>
       </div>
     </template>
     
     <div class="sidebar-content">
       <!-- Pastas -->
       <div class="sidebar-section">
-        <nav class="sidebar-nav">
+        <h2 class="sidebar-title">PASTAS</h2>
+        <nav class="sidebar-nav" aria-label="Pastas">
           <button 
             v-for="folder in folders" 
             :key="folder"
             @click="selectFolder(folder)"
             :class="['nav-item', { active: selectedFolder === folder }]"
+            :aria-pressed="selectedFolder === folder"
           >
-            <i class="pi pi-folder folder-icon"></i>
+            <i class="pi pi-folder folder-icon" aria-hidden="true"></i>
             {{ folder }}
           </button>
         </nav>
@@ -89,14 +93,15 @@
       <!-- Tags -->
       <div class="sidebar-section">
         <h2 class="sidebar-title">TAGS</h2>
-        <nav class="sidebar-nav" v-if="tags && tags.length > 0">
+        <nav class="sidebar-nav" aria-label="Tags" v-if="tags && tags.length > 0">
           <button 
             v-for="tag in tags" 
             :key="tag"
             @click="selectTag(tag)"
             :class="['nav-item tag-item', { active: selectedTag === tag }]"
+            :aria-pressed="selectedTag === tag"
           >
-            <i class="pi pi-hashtag tag-icon"></i>
+            <i class="pi pi-hashtag tag-icon" aria-hidden="true"></i>
             {{ tag }}
           </button>
         </nav>

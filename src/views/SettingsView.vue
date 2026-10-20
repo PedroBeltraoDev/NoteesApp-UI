@@ -3,66 +3,52 @@
     <div class="settings-container">
       <!-- Sidebar -->
       <aside class="settings-sidebar">
-        <button @click="goBack" class="btn-back">
-          ← Voltar
+        <button type="button" @click="goBack" class="btn-back">
+          <i class="pi pi-arrow-left" aria-hidden="true"></i> Voltar
         </button>
-        <h2>Configurações</h2>
+        <h1>Configurações</h1>
       </aside>
-      
+
       <!-- Main Content -->
       <main class="settings-main">
         <div class="settings-grid">
-          <!-- Interface Theme -->
-          <div class="setting-card">
+          <!-- Tema -->
+          <section class="setting-card" aria-labelledby="theme-title">
             <div class="card-header">
-              <h3>Interface theme</h3>
-              <p>Select or customize your UI theme.</p>
+              <h2 id="theme-title">Tema</h2>
+              <p>Escolha como o NoteesApp deve aparecer. “Sistema” segue a configuração do seu aparelho.</p>
             </div>
             <div class="card-content">
-              <div class="theme-selector">
-                <div class="theme-option" :class="{ active: !isDarkMode }" @click="setTheme('light')">
-                  <div class="theme-preview light"></div>
-                  <span>Light</span>
-                </div>
-                <div class="theme-option" :class="{ active: isDarkMode }" @click="setTheme('dark')">
-                  <div class="theme-preview dark"></div>
-                  <span>Dark</span>
-                </div>
-                <div class="theme-option" @click="setTheme('system')">
-                  <div class="theme-preview system"></div>
-                  <span>System</span>
-                </div>
+              <div class="theme-selector" role="radiogroup" aria-labelledby="theme-title">
+                <button
+                  v-for="option in themeOptions"
+                  :key="option.value"
+                  type="button"
+                  role="radio"
+                  :aria-checked="mode === option.value"
+                  class="theme-option"
+                  :class="{ active: mode === option.value }"
+                  @click="setMode(option.value)"
+                >
+                  <div class="theme-preview" :class="option.value"></div>
+                  <span>{{ option.label }}</span>
+                </button>
               </div>
             </div>
-          </div>
-          
-          <!-- Aparência Toggle -->
-          <div class="setting-card">
-            <div class="card-header">
-              <h3>Aparência</h3>
-              <p>Alternar entre tema claro e escuro</p>
-            </div>
-            <div class="card-content">
-              <label class="toggle-switch">
-                <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">{{ isDarkMode ? 'Escuro' : 'Claro' }}</span>
-              </label>
-            </div>
-          </div>
+          </section>
 
           <!-- Conta -->
-          <div class="setting-card">
+          <section class="setting-card" aria-labelledby="account-title">
             <div class="card-header">
-              <h3>Conta</h3>
+              <h2 id="account-title">Conta</h2>
               <p>{{ userEmail ?? 'Sem sessão ativa' }}</p>
             </div>
             <div class="card-content">
               <button class="btn-sign-out" type="button" @click="signOut">
-                Sair da conta
+                <i class="pi pi-sign-out" aria-hidden="true"></i> Sair da conta
               </button>
             </div>
-          </div>
+          </section>
         </div>
       </main>
     </div>
@@ -70,12 +56,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import router from '../router'
 import { session } from '@/services/session'
 import { authService } from '@/services/authService'
+import { useTheme, type ThemeMode } from '@/composables/useTheme'
 
-const isDarkMode = ref(false)
+const { mode, setMode } = useTheme()
+
+const themeOptions: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+  { value: 'system', label: 'Sistema' }
+]
 
 const userEmail = computed(() => session.user?.email ?? null)
 
@@ -86,51 +79,6 @@ const goBack = () => {
 const signOut = async () => {
   await authService.logout()
   router.push('/login')
-}
-
-onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  
-  if (savedTheme === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-  } else {
-    isDarkMode.value = false
-    document.documentElement.classList.remove('dark')
-  }
-})
-
-const toggleDarkMode = () => {
-  if (isDarkMode.value) {
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('theme', 'dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('theme', 'light')
-  }
-}
-
-const setTheme = (theme: string) => {
-  if (theme === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('theme', 'dark')
-  } else if (theme === 'light') {
-    isDarkMode.value = false
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('theme', 'light')
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-    
-    if (prefersDark) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
-  }
 }
 </script>
 
@@ -171,7 +119,7 @@ const setTheme = (theme: string) => {
   align-items: flex-start;
 }
 
-.settings-sidebar h2 {
+.settings-sidebar h1 {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
@@ -216,7 +164,7 @@ const setTheme = (theme: string) => {
   box-shadow: var(--shadow-sm);
 }
 
-.card-header h3 {
+.card-header h2 {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
@@ -239,6 +187,8 @@ const setTheme = (theme: string) => {
 }
 
 .theme-option {
+  font: inherit;
+  color: var(--text-primary);
   flex: 1;
   display: flex;
   flex-direction: column;

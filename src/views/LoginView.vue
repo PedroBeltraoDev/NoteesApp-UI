@@ -1,8 +1,8 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
+    <main class="login-box">
       <h1 class="logo">
-        <i class="pi pi-book"></i> NoteesApp
+        <i class="pi pi-book" aria-hidden="true"></i> NoteesApp
       </h1>
       <p class="subtitle">
         {{ isRegister ? 'Crie sua conta para começar' : 'Entre para acessar suas notas' }}
@@ -10,46 +10,69 @@
 
       <form @submit.prevent="handleSubmit" class="login-form" novalidate>
         <div class="form-group">
+          <label for="login-email" class="field-label">E-mail</label>
           <input
+            id="login-email"
             v-model="email"
             type="email"
-            placeholder="E-mail"
+            placeholder="voce@exemplo.com"
             class="input-field"
             :class="{ invalid: fieldErrors.email }"
+            :aria-invalid="!!fieldErrors.email"
+            :aria-describedby="fieldErrors.email ? 'login-email-error' : undefined"
             autocomplete="email"
             maxlength="254"
             ref="emailInput"
             @input="clearFeedback"
           />
-          <p v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email }}</p>
+          <p v-if="fieldErrors.email" id="login-email-error" class="field-error" role="alert">{{ fieldErrors.email }}</p>
         </div>
 
         <div class="form-group">
-          <input
-            v-model="password"
-            type="password"
-            placeholder="Senha"
-            class="input-field"
-            :class="{ invalid: fieldErrors.password }"
-            :autocomplete="isRegister ? 'new-password' : 'current-password'"
-            maxlength="128"
-            @input="clearFeedback"
-          />
-          <p v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password }}</p>
+          <label for="login-password" class="field-label">Senha</label>
+          <div class="password-wrapper">
+            <input
+              id="login-password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              :placeholder="isRegister ? 'Mínimo de 8 caracteres' : 'Sua senha'"
+              class="input-field has-toggle"
+              :class="{ invalid: fieldErrors.password }"
+              :aria-invalid="!!fieldErrors.password"
+              :aria-describedby="fieldErrors.password ? 'login-password-error' : undefined"
+              :autocomplete="isRegister ? 'new-password' : 'current-password'"
+              maxlength="128"
+              @input="clearFeedback"
+            />
+            <button
+              type="button"
+              class="toggle-password"
+              :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <i :class="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p v-if="fieldErrors.password" id="login-password-error" class="field-error" role="alert">{{ fieldErrors.password }}</p>
         </div>
 
         <div v-if="isRegister" class="form-group">
+          <label for="login-confirm" class="field-label">Confirmar senha</label>
           <input
+            id="login-confirm"
             v-model="confirmPassword"
-            type="password"
-            placeholder="Confirmar senha"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Repita a senha"
             class="input-field"
             :class="{ invalid: fieldErrors.confirmPassword }"
+            :aria-invalid="!!fieldErrors.confirmPassword"
+            :aria-describedby="fieldErrors.confirmPassword ? 'login-confirm-error' : undefined"
             autocomplete="new-password"
             maxlength="128"
             @input="clearFeedback"
           />
-          <p v-if="fieldErrors.confirmPassword" class="field-error">{{ fieldErrors.confirmPassword }}</p>
+          <p v-if="fieldErrors.confirmPassword" id="login-confirm-error" class="field-error" role="alert">{{ fieldErrors.confirmPassword }}</p>
         </div>
 
         <p v-if="error" class="error-message" role="alert">{{ error }}</p>
@@ -65,7 +88,7 @@
           {{ isRegister ? 'Entrar' : 'Criar conta' }}
         </button>
       </p>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -84,6 +107,7 @@ const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
 const emailInput = ref<HTMLInputElement | null>(null)
+const showPassword = ref(false)
 const fieldErrors = reactive({ email: '', password: '', confirmPassword: '' })
 
 const isRegister = computed(() => mode.value === 'register')
@@ -206,7 +230,7 @@ onMounted(() => {
 }
 
 .subtitle {
-  color: #888;
+  color: #a3a3a3;
   margin: 0 0 32px 0;
   font-size: 14px;
 }
@@ -219,6 +243,43 @@ onMounted(() => {
 
 .form-group {
   text-align: left;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 6px 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e5e5e5;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.input-field.has-toggle {
+  padding-right: 52px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #a3a3a3;
+  cursor: pointer;
+}
+
+.toggle-password:hover {
+  color: #ffffff;
 }
 
 .input-field {
@@ -250,7 +311,7 @@ onMounted(() => {
 }
 
 .btn-login {
-  background: #3b82f6;
+  background: #2563eb;
   color: white;
   border: none;
   padding: 14px 24px;
@@ -263,7 +324,7 @@ onMounted(() => {
 }
 
 .btn-login:hover:not(:disabled) {
-  background: #2563eb;
+  background: #1d4ed8;
   transform: translateY(-2px);
 }
 
@@ -279,7 +340,7 @@ onMounted(() => {
 }
 
 .switch-mode {
-  color: #888;
+  color: #a3a3a3;
   font-size: 14px;
   margin: 24px 0 0;
 }
@@ -287,11 +348,11 @@ onMounted(() => {
 .link-button {
   background: none;
   border: none;
-  color: #3b82f6;
+  color: #60a5fa;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 2px;
 }
 
 .link-button:hover:not(:disabled) {

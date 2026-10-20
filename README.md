@@ -23,9 +23,12 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 - ✅ **CRUD Completo** de notas
 - ✅ **Organização por Pastas** e Tags
 - ✅ **Notas Fixadas** (pin/unpin)
-- ✅ **Busca em Tempo Real** com debounce
+- ✅ **Busca em tempo real** em título, conteúdo, tags e pasta, sem diferenciar maiúsculas nem acentos (também no celular)
 - ✅ **Filtros** por pasta e tag
-- ✅ **Tema Escuro/Claro** (persistente)
+- ✅ **Tema Claro, Escuro ou Sistema** (uma única preferência, salva e aplicada antes de a tela aparecer)
+- ✅ **Pastas reais**: escolha uma pasta existente ou digite um nome novo para criá-la
+- ✅ **Menu da conta** (e-mail, Configurações, Sair), disponível em qualquer tamanho de tela
+- ✅ **Acessibilidade**: navegação por teclado, foco visível, leitores de tela, contraste AA e link "Pular para o conteúdo"
 - ✅ **Design Responsivo** (Mobile, Tablet, Desktop)
 - ✅ **Modal de Visualização** completa da nota
 - ✅ **Skeleton Loading** para melhor UX
@@ -86,6 +89,7 @@ src/
 ├── components/
 │   ├── layout/
 │   │   ├── Topbar.vue
+│   │   ├── AccountMenu.vue   # menu da conta acessível (teclado, Esc, clique fora)
 │   │   └── Sidebar.vue
 │   └── notes/
 │       ├── NoteCard.vue
@@ -108,8 +112,10 @@ src/
 │   ├── variables.css
 │   ├── global.css
 │   └── primevue-overrides.css
+├── composables/
+│   └── useTheme.ts        # tema único: claro | escuro | sistema
 ├── utils/
-│   └── debounce.ts
+│   └── search.ts          # busca sem acentos, não destrutiva
 ├── tests/
 │   └── components/
 │       ├── NoteCard.spec.ts
@@ -293,6 +299,17 @@ describe('NoteCard', () => {
 - ✅ Modal full-screen
 
 ---
+
+## ♿ Acessibilidade e usabilidade
+
+- **Teclado**: tudo é alcançável com Tab; o título da nota abre a leitura; o menu da conta aceita setas, Home/End e Esc.
+- **Leitores de tela**: botões só com ícone têm `aria-label`; campos têm `<label>` visível; erros de formulário são
+  anunciados (`role="alert"`) e ligados ao campo (`aria-describedby`); o modal de leitura é um `role="dialog"` que
+  prende o foco, fecha com Esc e devolve o foco a quem o abriu.
+- **Contraste**: textos e botões respeitam 4,5:1 (WCAG AA) nos dois temas. Os tokens ficam em `styles/variables.css`.
+- **Toque**: alvos de 44 px no celular; busca, menu da conta e filtros funcionam em telas pequenas.
+- **Movimento**: animações são reduzidas para quem ativa "reduzir movimento" no sistema.
+- **Estados**: carregamento, conta sem notas, pasta/tag sem notas e busca sem resultado têm mensagens próprias, com ação.
 
 ## 🎨 Design System
 
