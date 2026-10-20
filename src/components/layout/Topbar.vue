@@ -52,6 +52,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { authService } from '@/services/authService'
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -92,9 +93,9 @@ const handleSearch = () => {
   emit('search', searchQuery.value)
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('noteesapp_auth')
-  localStorage.removeItem('noteesapp_auth_time')
+const handleLogout = async () => {
+  // Revoga o refresh token no servidor e limpa a sessão local; o guard do router leva ao login
+  await authService.logout()
   router.push('/login')
 }
 </script>

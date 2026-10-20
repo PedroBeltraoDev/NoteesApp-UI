@@ -71,6 +71,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
 import { api } from '@/services/api'
+import { ApiError } from '@/services/http'
 import { useToast } from 'primevue/usetoast'
 
 // DECLARAÇÕES
@@ -106,6 +107,16 @@ const sortedNotes = computed(() => {
   return sorted
 })
 
+// Falha de sessão (401) já é tratada redirecionando para o login: não precisa de toast.
+// Qualquer outro erro da API (rede fora, servidor dormindo, 5xx) aparece para o usuário.
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof ApiError ? error.message : fallback
+
+const notifyError = (error: unknown, fallback: string) => {
+  if (error instanceof ApiError && error.status === 401) return
+  toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage(error, fallback), life: 5000 })
+}
+
 const loadNotes = async () => {
   try {
     isLoading.value = true
@@ -116,6 +127,7 @@ const loadNotes = async () => {
   } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
+    notifyError(error, 'Erro ao carregar as notas')
   } finally {
     isLoading.value = false
   }
@@ -126,6 +138,7 @@ const loadFolders = async () => {
     folders.value = await api.getFolders()
   } catch (error) {
     console.error('Erro ao buscar pastas:', error)
+    notifyError(error, 'Erro ao carregar as pastas')
   }
 }
 
@@ -134,6 +147,7 @@ const loadTags = async () => {
     tags.value = await api.getTags()
   } catch (error) {
     console.error('Erro ao buscar tags:', error)
+    notifyError(error, 'Erro ao carregar as tags')
   }
 }
 
@@ -179,12 +193,7 @@ const handleDeleteNote = async (id: number) => {
       await loadNotes()
     } catch (error: any) {
       console.error('Erro ao excluir nota:', error)
-      toast.add({
-        severity: 'error',
-        summary: 'Erro',
-        detail: 'Erro ao excluir nota',
-        life: 5000
-      })
+      notifyError(error, 'Erro ao excluir nota')
     }
   }
 }
@@ -203,12 +212,7 @@ const handleTogglePin = async (id: number) => {
       await loadNotes()
     } catch (error: any) {
       console.error('Erro ao atualizar nota:', error)
-      toast.add({
-        severity: 'error',
-        summary: 'Erro',
-        detail: 'Erro ao atualizar nota',
-        life: 5000
-      })
+      notifyError(error, 'Erro ao atualizar nota')
     }
   }
 }
@@ -237,12 +241,7 @@ const saveNote = async (noteData: any) => {
     closeModal()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: error.message || 'Erro ao salvar nota. Tente novamente.',
-      life: 5000
-    })
+    notifyError(error, 'Erro ao salvar nota. Tente novamente.')
   }
 }
 

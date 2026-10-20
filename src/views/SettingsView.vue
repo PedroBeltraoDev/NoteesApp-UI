@@ -50,6 +50,19 @@
               </label>
             </div>
           </div>
+
+          <!-- Conta -->
+          <div class="setting-card">
+            <div class="card-header">
+              <h3>Conta</h3>
+              <p>{{ userEmail ?? 'Sem sessão ativa' }}</p>
+            </div>
+            <div class="card-content">
+              <button class="btn-sign-out" type="button" @click="signOut">
+                Sair da conta
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -57,13 +70,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import router from '../router'
+import { session } from '@/services/session'
+import { authService } from '@/services/authService'
 
 const isDarkMode = ref(false)
 
+const userEmail = computed(() => session.user?.email ?? null)
+
 const goBack = () => {
   router.push('/')
+}
+
+const signOut = async () => {
+  await authService.logout()
+  router.push('/login')
 }
 
 onMounted(() => {
@@ -113,6 +135,21 @@ const setTheme = (theme: string) => {
 </script>
 
 <style scoped>
+.btn-sign-out {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-sign-out:hover {
+  background: var(--hover-bg);
+}
+
 .settings {
   min-height: 100vh;
   background: var(--bg-primary);

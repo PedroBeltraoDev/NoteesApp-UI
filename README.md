@@ -30,7 +30,8 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 - ✅ **Modal de Visualização** completa da nota
 - ✅ **Skeleton Loading** para melhor UX
 - ✅ **Toast Notifications** para feedback
-- ✅ **Autenticação Simples** (senha)
+- ✅ **Conta própria**: cadastro e login com e-mail e senha (JWT com renovação automática)
+- ✅ **Notas privadas**: cada usuário vê apenas as próprias notas
 - ✅ **Ícones PrimeIcons** (sem emojis)
 - ✅ **Testes Unitários** com Vitest
 
@@ -44,7 +45,7 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 | **Linguagem** | TypeScript 5.8 |
 | **UI Library** | PrimeVue 4 + PrimeIcons |
 | **Theme** | @primeuix/themes (Aura) |
-| **HTTP Client** | Axios |
+| **HTTP Client** | Fetch API (cliente próprio com renovação de token) |
 | **Router** | Vue Router 4 |
 | **Build Tool** | Vite 6 |
 | **Testes** | Vitest, Vue Test Utils, jsdom |
@@ -95,7 +96,12 @@ src/
 │   ├── LoginView.vue
 │   └── SettingsView.vue
 ├── services/
-│   └── api.ts
+│   ├── http.ts          # cliente HTTP: Bearer, renovação do token e ApiError
+│   ├── session.ts       # sessão (tokens + usuário) no localStorage, sincronizada entre abas
+│   ├── authService.ts   # cadastro, login, logout, me
+│   └── api.ts           # notas, pastas e tags
+├── middleware/
+│   └── auth.ts          # guard do router
 ├── router/
 │   └── index.ts
 ├── styles/
@@ -137,7 +143,6 @@ cp .env.example .env.local
 
 # 4. Configurar variáveis no .env.local
 VITE_API_BASE_URL=http://localhost:5000/api
-VITE_APP_PASSWORD=1234
 
 # 5. Rodar em desenvolvimento
 npm run dev
@@ -145,8 +150,11 @@ npm run dev
 # 6. Acessar
 http://localhost:5173
 
-# 7. Senha de acesso: 1234
+# 7. Na tela de login, clique em "Criar conta" e cadastre e-mail e senha (8 a 128 caracteres)
 ```
+
+> O backend precisa estar rodando com `Jwt__Key` definida e com `http://localhost:5173` em
+> `Cors:AllowedOrigins` (é o padrão). Veja o README do backend.
 
 ### Scripts Disponíveis
 
@@ -229,6 +237,22 @@ describe('NoteCard', () => {
 
 ---
 
+## 🔐 Autenticação
+
+- Cadastro e login chamam `/api/auth/register` e `/api/auth/login`. O backend devolve um **access token** (JWT, 15 min)
+  e um **refresh token** (14 dias, uso único).
+- Toda chamada a `/api/notes/*` leva `Authorization: Bearer <accessToken>` (`src/services/http.ts`).
+- Quando o access token vence (401), o cliente chama `/api/auth/refresh` **uma única vez** (mesmo com várias
+  requisições falhando juntas e com várias abas abertas, via Web Locks), guarda o novo par de tokens e repete a chamada.
+  Isso importa porque o backend trata o reuso de um refresh token como roubo e derruba todas as sessões.
+- Se o refresh for recusado, a sessão é encerrada e o app volta para `/login`. Falhas passageiras (rede fora, 429, 5xx)
+  **não** deslogam o usuário.
+- Logout revoga o refresh token no servidor e limpa a sessão local (também em outras abas).
+- Os tokens ficam no `localStorage` (a sessão sobrevive ao fechar a aba). Contrapartida: ficam acessíveis a XSS,
+  por isso o access token é curto e o Vue escapa todo conteúdo renderizado.
+
+---
+
 ## 🌐 Deploy
 
 ### Vercel (Frontend)
@@ -308,8 +332,8 @@ describe('NoteCard', () => {
 
 | Medida | Descrição |
 |--------|-----------|
-| **Autenticação** | Senha simples (localStorage) |
-| **CORS** | Apenas backend autorizado |
+| **Autenticação** | JWT de curta duração + refresh token rotativo (validados pelo backend); tokens no localStorage |
+| **CORS** | O backend só aceita a origem do frontend (`Cors__AllowedOrigins__0` no Render) |
 | **XSS Protection** | Vue auto-escapes conteúdo |
 | **HTTPS** | Forçado na Vercel |
 | **Environment Variables** | Credenciais no .env.local |
