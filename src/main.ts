@@ -15,10 +15,6 @@ import ConfirmationService from 'primevue/confirmationservice'
 
 import 'primeicons/primeicons.css'
 
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'  
-import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import Toast from 'primevue/toast'
 import Card from 'primevue/card'
@@ -34,7 +30,7 @@ app.use(PrimeVue, {
   theme: {
     preset: Aura,
     options: {
-      // Os componentes do PrimeVue ficam escuros só quando o <body> tem .dark-mode
+      // Os componentes do PrimeVue ficam escuros só quando o <html> tem .dark-mode (aplicado por useTheme)
       darkModeSelector: '.dark-mode',
       cssLayer: false
     }
@@ -43,11 +39,6 @@ app.use(PrimeVue, {
 app.use(ToastService)
 app.use(ConfirmationService)
 
-app.component('Textarea', Textarea)
-app.component('PTextarea', Textarea)
-app.component('PButton', Button)
-app.component('PInputText', InputText)
-app.component('PSelect', Select)
 app.component('PDialog', Dialog)
 app.component('PToast', Toast)
 app.component('PCard', Card)

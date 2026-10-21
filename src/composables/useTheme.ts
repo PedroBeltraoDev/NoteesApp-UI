@@ -43,12 +43,14 @@ const systemPrefersDark = ref(mediaQuery ? mediaQuery.matches : true)
 
 const isDark = computed(() => (mode.value === 'system' ? systemPrefersDark.value : mode.value === 'dark'))
 
-// O CSS do app (variables.css e primevue-overrides.css) reage às classes do <body>
+// As classes ficam no <html> (e não no <body>): o PrimeVue calcula as variáveis dos componentes em :root,
+// então o tema escuro só chega nos painéis soltos no <body> (Select, Toast...) se a classe estiver no mesmo elemento.
 function apply() {
   if (typeof document === 'undefined') return
 
-  document.body.classList.toggle('dark-mode', isDark.value)
-  document.body.classList.toggle('light-mode', !isDark.value)
+  const root = document.documentElement
+  root.classList.toggle('dark-mode', isDark.value)
+  root.classList.toggle('light-mode', !isDark.value)
   // Faz scrollbars e controles nativos acompanharem o tema
   document.documentElement.style.colorScheme = isDark.value ? 'dark' : 'light'
 }

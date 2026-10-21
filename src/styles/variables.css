@@ -24,7 +24,7 @@
 
 /* Dark Mode (Padrão) */
 :root,
-body.dark-mode {
+.dark-mode {
   /* Camadas: moldura > barra lateral > fundo > painel > card */
   --frame-bg: #2b2c30;
   --rail-bg: #101012;
@@ -61,7 +61,7 @@ body.dark-mode {
 }
 
 /* Light Mode */
-body.light-mode {
+.light-mode {
   --frame-bg: #e3e6ea;
   --rail-bg: #ffffff;
   --bg-primary: #f4f5f7;

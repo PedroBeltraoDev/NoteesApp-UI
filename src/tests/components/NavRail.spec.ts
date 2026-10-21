@@ -30,7 +30,7 @@ const item = (wrapper: ReturnType<typeof mount>, title: string) => wrapper.find(
 describe('NavRail', () => {
   beforeEach(() => {
     localStorage.clear()
-    document.body.className = 'dark-mode'
+    document.documentElement.className = 'dark-mode'
   })
 
   it('has the logo and the main navigation', async () => {

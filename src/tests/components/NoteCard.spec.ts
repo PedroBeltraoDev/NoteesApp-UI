@@ -35,7 +35,13 @@ describe('NoteCard', () => {
     const wrapper = mountCard()
 
     expect(wrapper.find('.note-content').text()).toBe(mockNote.content)
-    expect(wrapper.find('.read-more').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('a note with only a title has no empty content paragraph', () => {
+    const wrapper = mountCard({ ...mockNote, content: '' })
+
+    expect(wrapper.find('.note-content').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -59,21 +65,43 @@ describe('NoteCard', () => {
     b.unmount()
   })
 
-  it('emits delete with the note id from the trash button', async () => {
+  // ---------- Abrir = editar (não existe uma tela só de leitura)
+
+  it('clicking the card emits edit with the note', async () => {
     const wrapper = mountCard()
 
-    await wrapper.find('.icon-action.delete').trigger('click')
+    await wrapper.find('.note-card').trigger('click')
 
-    expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
+    expect(wrapper.emitted('edit')).toEqual([[mockNote]])
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
-  it('emits togglePin with the note id from the star button', async () => {
+  it('the title is a button that opens the note once (keyboard friendly)', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.find('button.note-open').trigger('click')
+
+    expect(wrapper.emitted('edit')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('there is no delete button on the card itself (delete lives in the menu and in the editor)', () => {
+    const wrapper = mountCard()
+
+    expect(wrapper.find('.icon-action.delete').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // ---------- Favoritar
+
+  it('emits togglePin with the note id from the star button, without opening the note', async () => {
     const wrapper = mountCard()
 
     await wrapper.find('.icon-action.star').trigger('click')
 
     expect(wrapper.emitted('togglePin')?.[0]).toEqual([mockNote.id])
+    expect(wrapper.emitted('edit')).toBeUndefined()
     wrapper.unmount()
   })
 
@@ -90,63 +118,46 @@ describe('NoteCard', () => {
     favorite.unmount()
   })
 
-  it('the ⋮ menu offers Abrir, Editar and Excluir', async () => {
+  it('the action buttons say which note they act on, and the star name follows the state', () => {
+    const plain = mountCard()
+    const favorite = mountCard({ ...mockNote, isPinned: true })
+
+    expect(plain.find('.icon-action.star').attributes('aria-label')).toBe('Favoritar nota Nota de Teste')
+    expect(favorite.find('.icon-action.star').attributes('aria-label')).toBe('Remover dos favoritos a nota Nota de Teste')
+    expect(plain.find('.kebab-trigger').attributes('aria-label')).toBe('Mais ações para Nota de Teste')
+    plain.unmount()
+    favorite.unmount()
+  })
+
+  // ---------- Menu ⋮
+
+  it('the ⋮ menu offers Editar and Excluir', async () => {
     const wrapper = mountCard()
 
     await wrapper.find('.kebab-trigger').trigger('click')
 
-    expect(wrapper.findAll('[role="menuitem"]').map(i => i.text())).toEqual(['Abrir', 'Editar', 'Excluir'])
+    expect(wrapper.findAll('[role="menuitem"]').map(i => i.text())).toEqual(['Editar', 'Excluir'])
     wrapper.unmount()
   })
 
-  it('emits edit with the note from the ⋮ menu', async () => {
-    const wrapper = mountCard()
-    await wrapper.find('.kebab-trigger').trigger('click')
-
-    await wrapper.findAll('[role="menuitem"]')[1]!.trigger('click')
-
-    expect(wrapper.emitted('edit')?.[0]).toEqual([mockNote])
-    wrapper.unmount()
-  })
-
-  it('emits delete from the ⋮ menu', async () => {
-    const wrapper = mountCard()
-    await wrapper.find('.kebab-trigger').trigger('click')
-
-    await wrapper.findAll('[role="menuitem"]')[2]!.trigger('click')
-
-    expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
-    wrapper.unmount()
-  })
-
-  it('"Abrir" in the ⋮ menu opens the full note', async () => {
+  it('emits edit once with the note from the ⋮ menu', async () => {
     const wrapper = mountCard()
     await wrapper.find('.kebab-trigger').trigger('click')
 
     await wrapper.findAll('[role="menuitem"]')[0]!.trigger('click')
 
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(wrapper.emitted('edit')).toEqual([[mockNote]])
     wrapper.unmount()
   })
 
-  it('clicking the action buttons does not open the full note', async () => {
+  it('emits delete with the note id from the ⋮ menu, without opening the note', async () => {
     const wrapper = mountCard()
+    await wrapper.find('.kebab-trigger').trigger('click')
 
-    await wrapper.find('.icon-action.star').trigger('click')
-    await wrapper.find('.icon-action.delete').trigger('click')
+    await wrapper.findAll('[role="menuitem"]')[1]!.trigger('click')
 
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('"Editar nota" inside the full view closes it and emits edit', async () => {
-    const wrapper = mountCard()
-    await wrapper.find('.note-card').trigger('click')
-
-    await wrapper.find('.btn-edit').trigger('click')
-
-    expect(wrapper.emitted('edit')?.[0]).toEqual([mockNote])
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper.emitted('delete')?.[0]).toEqual([mockNote.id])
+    expect(wrapper.emitted('edit')).toBeUndefined()
     wrapper.unmount()
   })
 })
