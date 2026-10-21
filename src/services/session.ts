@@ -3,6 +3,9 @@ import { reactive } from 'vue'
 export interface SessionUser {
   id: string
   email: string
+  // Conta demo: temporária. demoExpiresAt é o fim do prazo (ISO, UTC)
+  isDemo?: boolean
+  demoExpiresAt?: string | null
 }
 
 // Formato devolvido por /api/auth/register, /login e /refresh

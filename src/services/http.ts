@@ -1,5 +1,6 @@
 import { session, type Session } from './session'
 import { markApiCall } from './keepAlive'
+import { noteSessionEnding } from './demo'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://noteesapp-be.onrender.com/api'
 
@@ -73,6 +74,12 @@ async function parse<T>(response: Response): Promise<T> {
   throw new ApiError(response.status, body?.message || fallback, body?.errors ?? {})
 }
 
+// Encerra a sessão por um 401. Antes, registra se quem acabou foi a conta demo (o app mostra um aviso próprio)
+function endSession(error?: unknown) {
+  noteSessionEnding(error instanceof ApiError ? error : undefined)
+  session.clear()
+}
+
 // --- Renovação do access token -------------------------------------------------------------------
 //
 // O refresh token é de uso único: o backend trata a reapresentação de um token já usado como roubo e
@@ -103,7 +110,7 @@ async function performRefresh(staleToken: string | null): Promise<string> {
   } catch (error) {
     // Só encerra a sessão quando o servidor recusou o refresh token. Rede fora, 429 ou 5xx são
     // passageiros: o usuário continua logado e tenta de novo.
-    if (error instanceof ApiError && (error.status === 401 || error.status === 400)) session.clear()
+    if (error instanceof ApiError && (error.status === 401 || error.status === 400)) endSession(error)
     throw error
   }
 }
@@ -132,14 +139,14 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   try {
     renewedToken = await refreshAccessToken(token)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) session.clear()
+    if (error instanceof ApiError && error.status === 401) endSession(error)
     throw error
   }
 
   const retry = await send(path, options, renewedToken)
 
   if (retry.status === 401) {
-    session.clear()
+    endSession()
     throw new ApiError(401, 'Sessão expirada. Faça login novamente.')
   }
 

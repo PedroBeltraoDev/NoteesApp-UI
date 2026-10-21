@@ -45,6 +45,11 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 - ✅ **Toast Notifications** para feedback
 - ✅ **Conta própria**: cadastro e login com e-mail e senha (JWT com renovação automática)
 - ✅ **Notas privadas**: cada usuário vê apenas as próprias notas
+- ✅ **Conta demo**: na tela de login, "Experimentar com conta demo" cria na hora uma conta temporária, sem e-mail nem senha,
+  já com notas de exemplo. Um aviso no topo mostra a contagem regressiva ("Será apagada em 29:41") e oferece "Criar conta real".
+  O prazo (30 min) é imposto pelo **servidor** (o token da demo vence com ela e a renovação é recusada); a tela só o mostra.
+  Quando o tempo acaba aparece um aviso que não dá para fechar, com duas saídas: criar uma nova conta demo ou criar uma conta real
+  (as notas da demo não são levadas para a conta real). Reabrir o app com uma demo vencida mostra o mesmo aviso
 - ✅ **Ícones PrimeIcons** (sem emojis)
 - ✅ **Testes Unitários** com Vitest
 
@@ -101,12 +106,14 @@ src/
 │   │   ├── AppLogo.vue      # logo (placa verde com duas folhas de nota) com ou sem o nome
 │   │   ├── CollectionTile.vue # cartão de uma pasta ou tag: nome, nº de notas e menu ⋮
 │   │   ├── ConfirmDialog.vue  # confirmação de exclusão (o foco começa em "Cancelar")
+│   │   ├── DemoExpiredDialog.vue # "O tempo da demo acabou": nova demo ou conta real
 │   │   └── KebabMenu.vue    # menu ⋮ acessível (setas, Esc, clique fora)
 │   ├── layout/
 │   │   ├── AppShell.vue     # moldura + barra lateral + cabeçalho + painel (usado por todas as telas logadas)
 │   │   ├── NavRail.vue      # barra lateral de ícones (gaveta no celular): Notas e Configurações
 │   │   ├── Topbar.vue       # título da página, busca e conta
-│   │   └── AccountMenu.vue  # menu da conta acessível
+│   │   ├── AccountMenu.vue  # menu da conta acessível
+│   │   └── DemoBanner.vue   # aviso fixo da conta demo, com a contagem regressiva
 │   └── notes/
 │       ├── FolderNameDialog.vue # criar / renomear pasta (erro de nome repetido no próprio campo)
 │       ├── NoteCard.vue
@@ -118,7 +125,8 @@ src/
 ├── services/
 │   ├── http.ts          # cliente HTTP: Bearer, renovação do token e ApiError
 │   ├── session.ts       # sessão (tokens + usuário) no localStorage, sincronizada entre abas
-│   ├── authService.ts   # cadastro, login, logout, me
+│   ├── authService.ts   # cadastro, login, conta demo, logout, me
+│   ├── demo.ts          # estado "o tempo da demo acabou" e prazo da demo
 │   └── api.ts           # notas e pastas (as tags vêm das próprias notas)
 ├── middleware/
 │   └── auth.ts          # guard do router
@@ -130,6 +138,7 @@ src/
 │   ├── ui.css             # botões e campos compartilhados pelos diálogos
 │   └── primevue-overrides.css
 ├── composables/
+│   ├── useDemoCountdown.ts # contagem regressiva da demo; ao zerar, encerra a sessão e avisa
 │   └── useTheme.ts        # tema único: claro | escuro | sistema
 ├── utils/
 │   ├── notesView.ts       # ordem por data, contagem por pasta e por tag

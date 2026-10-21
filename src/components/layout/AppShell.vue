@@ -6,6 +6,8 @@
       <NavRail v-model:mobileOpen="mobileOpen" :expanded="expanded" @logout="handleLogout" />
 
       <div class="app-main">
+        <DemoBanner />
+
         <Topbar
           :title="title"
           :search="search"
@@ -30,6 +32,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import NavRail from './NavRail.vue'
 import Topbar from './Topbar.vue'
+import DemoBanner from './DemoBanner.vue'
 import { authService } from '@/services/authService'
 
 withDefaults(

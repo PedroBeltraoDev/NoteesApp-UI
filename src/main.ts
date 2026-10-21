@@ -3,6 +3,7 @@ import App from './App.vue'
 import router from './router'
 import { initTheme } from './composables/useTheme'
 import { startKeepAlive } from './services/keepAlive'
+import { checkStoredDemo } from './services/demo'
 import { API_BASE_URL } from './services/http'
 
 import './styles/variables.css'
@@ -25,6 +26,9 @@ import Drawer from 'primevue/drawer'
 
 // Aplica o tema antes de montar, para não piscar o tema errado
 initTheme()
+
+// Uma demo salva no navegador que já venceu: mostra o aviso de tempo esgotado em vez de um login sem explicação
+checkStoredDemo()
 
 const app = createApp(App)
 
