@@ -18,7 +18,7 @@ async function mountRail(props: Record<string, unknown> = {}, path = '/') {
   await router.isReady()
 
   const wrapper = mount(NavRail, {
-    props: { showFilters: true, folders: ['Trabalho', 'Pessoal'], tags: ['importante', 'casa'], ...props },
+    props,
     global: { plugins: [router] },
     attachTo: document.body
   })
@@ -38,9 +38,8 @@ describe('NavRail', () => {
 
     expect(wrapper.find('.rail-brand').attributes('aria-label')).toContain('NoteesApp')
     expect(wrapper.find('nav').attributes('aria-label')).toBe('Principal')
-    expect(wrapper.findAll('.rail-nav .rail-item').map(i => i.attributes('title'))).toEqual([
-      'Notas', 'Pastas', 'Tags', 'Configurações'
-    ])
+    // Pastas e Tags vivem dentro da tela de notas (Todas | Pastas | Tags), não aqui: seria navegação em dobro
+    expect(wrapper.findAll('.rail-nav .rail-item').map(i => i.attributes('title'))).toEqual(['Notas', 'Configurações'])
     wrapper.unmount()
   })
 
@@ -48,15 +47,8 @@ describe('NavRail', () => {
     const { wrapper } = await mountRail()
 
     expect(wrapper.findAll('.rail-item .rail-label').map(l => l.text())).toEqual([
-      'Notas', 'Pastas', 'Tags', 'Configurações', 'Tema claro', 'Sair'
+      'Notas', 'Configurações', 'Tema claro', 'Sair'
     ])
-    wrapper.unmount()
-  })
-
-  it('hides Pastas and Tags on pages that have no filters (Configurações)', async () => {
-    const { wrapper } = await mountRail({ showFilters: false }, '/configuracoes')
-
-    expect(wrapper.findAll('.rail-nav .rail-item').map(i => i.attributes('title'))).toEqual(['Notas', 'Configurações'])
     wrapper.unmount()
   })
 
@@ -82,7 +74,7 @@ describe('NavRail', () => {
   })
 
   it('"Notas" goes home from another page', async () => {
-    const { wrapper, router } = await mountRail({ showFilters: false }, '/configuracoes')
+    const { wrapper, router } = await mountRail({}, '/configuracoes')
 
     await item(wrapper, 'Notas').trigger('click')
     await flushPromises()
@@ -91,122 +83,25 @@ describe('NavRail', () => {
     wrapper.unmount()
   })
 
-  it('"Notas" on the list clears the active folder/tag filter', async () => {
-    const { wrapper } = await mountRail({ selectedFolder: 'Trabalho' })
+  it('"Notas" always goes back to the start: all notes, with no folder or tag open', async () => {
+    const { wrapper, router } = await mountRail({}, '/?view=folders&folder=3')
+    expect(router.currentRoute.value.query).toEqual({ view: 'folders', folder: '3' })
 
     await item(wrapper, 'Notas').trigger('click')
+    await flushPromises()
 
-    expect(wrapper.emitted('clearFilters')).toHaveLength(1)
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(router.currentRoute.value.query).toEqual({})
     wrapper.unmount()
   })
 
-  // ---------- Pastas / Tags
+  it('the logo also goes back to the start of the notes', async () => {
+    const { wrapper, router } = await mountRail({}, '/?view=tags&tag=casa')
 
-  it('Pastas opens a panel listing the folders and focuses the first one', async () => {
-    const { wrapper } = await mountRail()
-
-    await item(wrapper, 'Pastas').trigger('click')
+    await wrapper.find('.rail-brand').trigger('click')
     await flushPromises()
 
-    expect(item(wrapper, 'Pastas').attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('.flyout').attributes('aria-label')).toBe('Pastas')
-    expect(wrapper.findAll('.flyout-item').map(b => b.text())).toEqual(['Trabalho', 'Pessoal'])
-    expect(document.activeElement).toBe(wrapper.find('.flyout-item').element)
-    wrapper.unmount()
-  })
-
-  it('Tags opens a panel listing the tags', async () => {
-    const { wrapper } = await mountRail()
-
-    await item(wrapper, 'Tags').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.flyout').attributes('aria-label')).toBe('Tags')
-    expect(wrapper.findAll('.flyout-item').map(b => b.text())).toEqual(['importante', 'casa'])
-    wrapper.unmount()
-  })
-
-  it('picking a folder emits selectFolder and closes the panel', async () => {
-    const { wrapper } = await mountRail()
-    await item(wrapper, 'Pastas').trigger('click')
-    await flushPromises()
-
-    await wrapper.findAll('.flyout-item')[1]!.trigger('click')
-
-    expect(wrapper.emitted('selectFolder')?.[0]).toEqual(['Pessoal'])
-    expect(wrapper.find('.flyout').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('picking a tag emits selectTag', async () => {
-    const { wrapper } = await mountRail()
-    await item(wrapper, 'Tags').trigger('click')
-    await flushPromises()
-
-    await wrapper.findAll('.flyout-item')[0]!.trigger('click')
-
-    expect(wrapper.emitted('selectTag')?.[0]).toEqual(['importante'])
-    wrapper.unmount()
-  })
-
-  it('the selected folder is marked in the panel and on the rail', async () => {
-    const { wrapper } = await mountRail({ selectedFolder: 'Pessoal' })
-
-    expect(item(wrapper, 'Pastas').classes()).toContain('active')
-    await item(wrapper, 'Pastas').trigger('click')
-    await flushPromises()
-
-    const items = wrapper.findAll('.flyout-item')
-    expect(items[1]!.attributes('aria-pressed')).toBe('true')
-    expect(items[0]!.attributes('aria-pressed')).toBe('false')
-    wrapper.unmount()
-  })
-
-  it('shows a helpful message when there are no folders yet', async () => {
-    const { wrapper } = await mountRail({ folders: [] })
-
-    await item(wrapper, 'Pastas').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.flyout-empty').text()).toContain('Nenhuma pasta')
-    wrapper.unmount()
-  })
-
-  it('Escape closes the panel and returns the focus to the rail item', async () => {
-    const { wrapper } = await mountRail()
-    await item(wrapper, 'Pastas').trigger('click')
-    await flushPromises()
-
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    await flushPromises()
-
-    expect(wrapper.find('.flyout').exists()).toBe(false)
-    expect(document.activeElement).toBe(item(wrapper, 'Pastas').element)
-    wrapper.unmount()
-  })
-
-  it('clicking outside closes the panel', async () => {
-    const { wrapper } = await mountRail()
-    await item(wrapper, 'Tags').trigger('click')
-    await flushPromises()
-
-    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    await flushPromises()
-
-    expect(wrapper.find('.flyout').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('clicking the same item again closes the panel; another item switches it', async () => {
-    const { wrapper } = await mountRail()
-
-    await item(wrapper, 'Pastas').trigger('click')
-    await item(wrapper, 'Tags').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('.flyout').attributes('aria-label')).toBe('Tags')
-
-    await item(wrapper, 'Tags').trigger('click')
-    expect(wrapper.find('.flyout').exists()).toBe(false)
+    expect(router.currentRoute.value.query).toEqual({})
     wrapper.unmount()
   })
 

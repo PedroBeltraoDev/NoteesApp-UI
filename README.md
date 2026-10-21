@@ -21,18 +21,22 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 ## ✨ Funcionalidades
 
 - ✅ **CRUD Completo** de notas
-- ✅ **Organização por Pastas** e Tags
-- ✅ **Favoritas**: estrela em cada nota e aba "Favoritas" (as favoritas sempre aparecem primeiro)
+- ✅ **Pastas de verdade**: uma pasta existe por conta própria (pode ficar vazia), você **entra nela** e vê só as notas
+  de dentro, e pode criar, renomear e excluir (excluir uma pasta **não apaga as notas**: elas ficam em "Sem pasta")
+- ✅ **Tags** são rótulos livres da nota (uma nota tem várias): a visão "Tags" mostra cada tag com quantas notas a usam
+- ✅ **Todas | Pastas | Tags**: o seletor no topo da tela de notas escolhe como ver tudo. O caminho aberto fica na URL
+  (`/?view=folders&folder=3`), então o botão Voltar e os links funcionam
+- ✅ **Ordem por data**: mais recentes, mais antigas ou editadas por último (a escolha fica guardada)
+- ✅ **Favoritas**: estrela em cada nota e botão "Favoritas" que mostra só elas (a ordem é sempre por data)
 - ✅ **Visual em verde**: barra lateral de ícones, cabeçalho com busca e conta, abas, grade de cartões coloridos por pasta
 - ✅ **Busca em tempo real** em título, conteúdo, tags e pasta, sem diferenciar maiúsculas nem acentos (também no celular)
-- ✅ **Filtros** por pasta e tag
 - ✅ **Tema Claro, Escuro ou Sistema** (uma única preferência, salva e aplicada antes de a tela aparecer)
 - ✅ **Formulário de nota enxuto**: só o título é obrigatório; a pasta é escolhida em botões (com "Nova pasta" no próprio
   formulário, sem lista flutuante) e as tags são chips com sugestões das que você já usa. Ctrl+Enter salva
 - ✅ **Um só diálogo por nota**: clicar no cartão abre direto a edição (com favoritar e excluir). Se você fechar com texto
   digitado, o app pergunta antes de descartar
-- ✅ **Criar já no lugar certo**: com um filtro de pasta ou tag ativo, a nota nova nasce nessa pasta/tag; se ela ficar
-  escondida por um filtro, pela busca ou pela aba Favoritas, eles saem do caminho para você vê-la
+- ✅ **Criar já no lugar certo**: dentro de uma pasta ou de uma tag, a nota nova nasce nela; se ela ficar escondida
+  pela pasta/tag aberta, pela busca ou pelo botão Favoritas, eles saem do caminho para você vê-la
 - ✅ **Excluir com "Desfazer"**: a nota some na hora e só é apagada de verdade depois de 6 segundos (sem `confirm()` do navegador)
 - ✅ **Menu da conta** (e-mail, Configurações, Sair), disponível em qualquer tamanho de tela
 - ✅ **Acessibilidade**: navegação por teclado, foco visível, leitores de tela, contraste AA e link "Pular para o conteúdo"
@@ -95,14 +99,16 @@ src/
 ├── components/
 │   ├── common/
 │   │   ├── AppLogo.vue      # logo (placa verde com duas folhas de nota) com ou sem o nome
+│   │   ├── CollectionTile.vue # cartão de uma pasta ou tag: nome, nº de notas e menu ⋮
+│   │   ├── ConfirmDialog.vue  # confirmação de exclusão (o foco começa em "Cancelar")
 │   │   └── KebabMenu.vue    # menu ⋮ acessível (setas, Esc, clique fora)
 │   ├── layout/
 │   │   ├── AppShell.vue     # moldura + barra lateral + cabeçalho + painel (usado por todas as telas logadas)
-│   │   ├── NavRail.vue      # barra lateral de ícones (gaveta no celular)
-│   │   ├── FilterFlyout.vue # painel de pastas/tags ao lado da barra
+│   │   ├── NavRail.vue      # barra lateral de ícones (gaveta no celular): Notas e Configurações
 │   │   ├── Topbar.vue       # título da página, busca e conta
 │   │   └── AccountMenu.vue  # menu da conta acessível
 │   └── notes/
+│       ├── FolderNameDialog.vue # criar / renomear pasta (erro de nome repetido no próprio campo)
 │       ├── NoteCard.vue
 │       └── NoteFormModal.vue
 ├── views/
@@ -113,7 +119,7 @@ src/
 │   ├── http.ts          # cliente HTTP: Bearer, renovação do token e ApiError
 │   ├── session.ts       # sessão (tokens + usuário) no localStorage, sincronizada entre abas
 │   ├── authService.ts   # cadastro, login, logout, me
-│   └── api.ts           # notas, pastas e tags
+│   └── api.ts           # notas e pastas (as tags vêm das próprias notas)
 ├── middleware/
 │   └── auth.ts          # guard do router
 ├── router/
@@ -121,10 +127,12 @@ src/
 ├── styles/
 │   ├── variables.css
 │   ├── global.css
+│   ├── ui.css             # botões e campos compartilhados pelos diálogos
 │   └── primevue-overrides.css
 ├── composables/
 │   └── useTheme.ts        # tema único: claro | escuro | sistema
 ├── utils/
+│   ├── notesView.ts       # ordem por data, contagem por pasta e por tag
 │   └── search.ts          # busca sem acentos, não destrutiva
 ├── tests/
 │   └── components/
@@ -331,7 +339,8 @@ Cada push gera um *preview deployment*; o merge na `main` publica em produção.
 - **Cores de categoria**: cada pasta tem sempre a mesma cor (borda do cartão e avatar), definida em `utils/noteColor.ts`
   a partir de `--note-green`, `--note-sky`, `--note-amber`, `--note-violet`, `--note-coral` e `--note-teal`. Notas sem pasta usam o verde da marca.
 - **Estrutura**: `AppShell` (barra lateral de ícones 72 px, expansível para 232 px com rótulos) + cabeçalho + painel
-  com abas "Todas as notas / Favoritas" e botão "Nova nota". No celular a barra vira uma gaveta e a busca abre abaixo do cabeçalho.
+  com as abas "Todas | Pastas | Tags", ordem, botão "Favoritas" e botão "Nova nota". No celular a barra vira uma gaveta e a
+  busca abre abaixo do cabeçalho.
 
 ## 🔒 Segurança
 

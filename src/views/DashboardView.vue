@@ -1,20 +1,7 @@
 <template>
-  <AppShell
-    title="Notas"
-    :search="searchQuery"
-    :showSearch="true"
-    :showFilters="true"
-    :folders="folders"
-    :tags="tags"
-    :selectedFolder="selectedFolder"
-    :selectedTag="selectedTag"
-    @search="handleSearch"
-    @selectFolder="selectFolder"
-    @selectTag="selectTag"
-    @clearFilters="clearFilters"
-  >
-    <div class="tabs-bar">
-      <div class="tabs" role="tablist" aria-label="Visualização das notas" @keydown="onTabKeydown">
+  <AppShell title="Notas" :search="searchQuery" :showSearch="true" @search="handleSearch">
+    <div class="toolbar">
+      <div class="tabs" role="tablist" aria-label="Como ver as notas" @keydown="onTabKeydown">
         <button
           v-for="tab in tabs"
           :id="`tab-${tab.key}`"
@@ -26,33 +13,73 @@
           :aria-selected="view === tab.key"
           :tabindex="view === tab.key ? 0 : -1"
           aria-controls="notes-panel"
-          @click="view = tab.key"
+          @click="setView(tab.key)"
         >
           <i :class="tab.icon" aria-hidden="true"></i>
-          {{ tab.label }}
+          <span>{{ tab.label }}<span v-if="tab.extra" class="tab-extra">{{ tab.extra }}</span></span>
           <span class="tab-count" aria-hidden="true">{{ tab.count }}</span>
           <span class="sr-only">({{ tab.count }})</span>
         </button>
       </div>
 
-      <button type="button" class="btn-add" @click="handleCreateNote">
-        <i class="pi pi-plus" aria-hidden="true"></i> Nova nota
-      </button>
+      <div class="toolbar-actions">
+        <template v-if="showListControls">
+          <label class="sort">
+            <span class="sort-label">Ordem</span>
+            <select v-model="sortMode" class="sort-select" aria-label="Ordenar as notas por data">
+              <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            class="toggle"
+            :class="{ active: favoritesOnly }"
+            :aria-pressed="favoritesOnly"
+            @click="favoritesOnly = !favoritesOnly"
+          >
+            <i :class="favoritesOnly ? 'pi pi-star-fill' : 'pi pi-star'" aria-hidden="true"></i> Favoritas
+          </button>
+        </template>
+
+        <button type="button" class="btn-add" @click="handleCreateNote">
+          <i class="pi pi-plus" aria-hidden="true"></i> Nova nota
+        </button>
+      </div>
     </div>
 
-    <div v-if="activeFilter" class="filter-row">
-      <span class="active-filter">
-        Filtrando por: {{ activeFilter }}
-        <button
-          @click="clearFilters"
-          class="clear-filter"
-          type="button"
-          aria-label="Remover filtro"
-          title="Remover filtro"
-        >
-          <i class="pi pi-times" aria-hidden="true"></i>
+    <!-- Onde você está: Pastas > Trabalho, Tags > dotnet -->
+    <div v-if="mode === 'folder' || mode === 'tag'" class="scope-head">
+      <nav class="breadcrumb" aria-label="Você está em">
+        <ol>
+          <li>
+            <button type="button" class="crumb-link" @click="setView(mode === 'folder' ? 'folders' : 'tags')">
+              {{ mode === 'folder' ? 'Pastas' : 'Tags' }}
+            </button>
+          </li>
+          <li aria-current="page" class="crumb-current">
+            <i :class="mode === 'folder' ? (openFolder?.kind === 'none' ? 'pi pi-inbox' : 'pi pi-folder') : 'pi pi-hashtag'" aria-hidden="true"></i>
+            {{ scopeTitle }}
+          </li>
+        </ol>
+      </nav>
+
+      <div v-if="openFolder?.kind === 'folder'" class="scope-actions">
+        <button type="button" class="link-btn" @click="openRenameFolder(openFolder.folder)">
+          <i class="pi pi-pencil" aria-hidden="true"></i> Renomear
         </button>
-      </span>
+        <button type="button" class="link-btn danger" @click="askDeleteFolder(openFolder.folder)">
+          <i class="pi pi-trash" aria-hidden="true"></i> Excluir pasta
+        </button>
+      </div>
+    </div>
+
+    <!-- Busca: resultados de todas as notas, onde quer que você esteja -->
+    <div v-if="mode === 'search'" class="scope-head">
+      <p class="search-summary" role="status">
+        Resultados para “{{ searchQuery.trim() }}”
+        <button type="button" class="link-btn" @click="clearSearch">Limpar busca</button>
+      </p>
     </div>
 
     <div id="notes-panel" role="tabpanel" :aria-labelledby="`tab-${view}`">
@@ -61,67 +88,139 @@
         <p>Carregando notas...</p>
       </div>
 
-      <!-- Nenhuma nota ainda (conta nova) -->
-      <div v-else-if="notes.length === 0 && !activeFilter" class="empty-state">
-        <h2>
-          <i class="pi pi-file-edit" aria-hidden="true"></i> Nenhuma nota ainda
-        </h2>
-        <p>Crie sua primeira nota para começar a organizar suas ideias.</p>
-        <button type="button" class="empty-action primary" @click="handleCreateNote">
-          <i class="pi pi-plus" aria-hidden="true"></i> Criar primeira nota
-        </button>
+      <!-- Pastas: escolha uma para entrar nela -->
+      <template v-else-if="mode === 'folders'">
+        <p v-if="folders.length === 0" class="hint">Pastas agrupam as suas notas. Crie a primeira e depois guarde notas dentro dela.</p>
+
+        <div class="tiles">
+          <CollectionTile
+            v-if="countsByFolder.get(null)"
+            name="Sem pasta"
+            icon="pi pi-inbox"
+            :count="countsByFolder.get(null) ?? 0"
+            @open="openNoFolder"
+          />
+          <CollectionTile
+            v-for="folder in folders"
+            :key="folder.id"
+            :name="folder.name"
+            :count="countsByFolder.get(folder.id) ?? 0"
+            :color="noteColorVar(folder.name)"
+            :menuItems="folderMenu"
+            @open="openFolderById(folder.id)"
+            @menu="onFolderMenu(folder, $event)"
+          />
+          <button type="button" class="tile-add" @click="openCreateFolder">
+            <i class="pi pi-plus" aria-hidden="true"></i> Nova pasta
+          </button>
+        </div>
+      </template>
+
+      <!-- Tags: escolha uma para ver as notas que a usam -->
+      <template v-else-if="mode === 'tags'">
+        <div v-if="tagList.length === 0" class="empty-state">
+          <h2><i class="pi pi-hashtag" aria-hidden="true"></i> Nenhuma tag ainda</h2>
+          <p>Tags são rótulos livres. Adicione tags ao criar uma nota e elas aparecem aqui.</p>
+        </div>
+
+        <div v-else class="tiles">
+          <CollectionTile
+            v-for="tag in tagList"
+            :key="tag.name"
+            :name="tag.name"
+            :count="tag.count"
+            icon="pi pi-hashtag"
+            :color="noteColorVar(tag.name)"
+            @open="openTagNamed(tag.name)"
+          />
+        </div>
+      </template>
+
+      <!-- A pasta da URL não existe (foi excluída ou o link está velho) -->
+      <div v-else-if="mode === 'folder' && !openFolder" class="empty-state">
+        <h2><i class="pi pi-folder-open" aria-hidden="true"></i> Pasta não encontrada</h2>
+        <p>Ela pode ter sido excluída. Volte para a lista de pastas.</p>
+        <button type="button" class="empty-action" @click="setView('folders')">Ver pastas</button>
       </div>
 
-      <!-- Pasta ou tag sem notas -->
-      <div v-else-if="notes.length === 0" class="empty-state">
-        <h2>
-          <i class="pi pi-filter-slash" aria-hidden="true"></i> Nada em {{ activeFilter }}
-        </h2>
-        <p>Não há notas com esse filtro.</p>
-        <button type="button" class="empty-action" @click="clearFilters">Ver todas as notas</button>
-      </div>
+      <!-- Lista de notas (todas, de uma pasta, de uma tag ou resultado de busca) -->
+      <template v-else>
+        <div v-if="notes.length === 0" class="empty-state">
+          <h2><i class="pi pi-file-edit" aria-hidden="true"></i> Nenhuma nota ainda</h2>
+          <p>Crie sua primeira nota para começar a organizar suas ideias.</p>
+          <button type="button" class="empty-action primary" @click="handleCreateNote">
+            <i class="pi pi-plus" aria-hidden="true"></i> Criar primeira nota
+          </button>
+        </div>
 
-      <!-- Aba Favoritas vazia -->
-      <div v-else-if="view === 'favorites' && favoritesCount === 0" class="empty-state">
-        <h2>
-          <i class="pi pi-star" aria-hidden="true"></i> Nenhuma favorita ainda
-        </h2>
-        <p>Toque na estrela de uma nota para ela aparecer aqui.</p>
-        <button type="button" class="empty-action" @click="view = 'all'">Ver todas as notas</button>
-      </div>
+        <div v-else-if="visibleNotes.length === 0" class="empty-state" role="status">
+          <template v-if="mode === 'search'">
+            <h2><i class="pi pi-search" aria-hidden="true"></i> Nenhum resultado</h2>
+            <p>Nada encontrado para “{{ searchQuery.trim() }}”. Confira a grafia ou tente outras palavras.</p>
+            <button type="button" class="empty-action" @click="clearSearch">Limpar busca</button>
+          </template>
+          <template v-else-if="favoritesOnly">
+            <h2><i class="pi pi-star" aria-hidden="true"></i> Nenhuma favorita aqui</h2>
+            <p>Toque na estrela de uma nota para ela aparecer entre as favoritas.</p>
+            <button type="button" class="empty-action" @click="favoritesOnly = false">Mostrar todas</button>
+          </template>
+          <template v-else-if="mode === 'folder'">
+            <h2><i class="pi pi-folder-open" aria-hidden="true"></i> {{ openFolder?.kind === 'none' ? 'Nenhuma nota sem pasta' : 'Esta pasta está vazia' }}</h2>
+            <p>{{ openFolder?.kind === 'none' ? 'Todas as suas notas estão em alguma pasta.' : 'Crie uma nota aqui ou escolha esta pasta ao editar outra nota.' }}</p>
+            <button v-if="openFolder?.kind === 'folder'" type="button" class="empty-action primary" @click="handleCreateNote">
+              <i class="pi pi-plus" aria-hidden="true"></i> Criar nota nesta pasta
+            </button>
+          </template>
+          <template v-else>
+            <h2><i class="pi pi-hashtag" aria-hidden="true"></i> Nenhuma nota com essa tag</h2>
+            <p>Nenhuma nota usa a tag “{{ tagParam }}” agora.</p>
+            <button type="button" class="empty-action" @click="setView('tags')">Ver tags</button>
+          </template>
+        </div>
 
-      <!-- A busca não encontrou nada -->
-      <div v-else-if="visibleNotes.length === 0" class="empty-state" role="status">
-        <h2>
-          <i class="pi pi-search" aria-hidden="true"></i> Nenhum resultado
-        </h2>
-        <p>Nada encontrado para “{{ searchQuery }}”. Confira a grafia ou tente outras palavras.</p>
-        <button type="button" class="empty-action" @click="clearSearch">Limpar busca</button>
-      </div>
-
-      <div v-else class="notes-grid">
-        <NoteCard
-          v-for="note in visibleNotes"
-          :key="note.id"
-          :note="note"
-          @edit="handleEditNote"
-          @delete="handleDeleteNote"
-          @togglePin="handleTogglePin"
-        />
-      </div>
+        <div v-else class="notes-grid">
+          <NoteCard
+            v-for="note in visibleNotes"
+            :key="note.id"
+            :note="note"
+            @edit="handleEditNote"
+            @delete="handleDeleteNote"
+            @togglePin="handleTogglePin"
+          />
+        </div>
+      </template>
     </div>
 
     <NoteFormModal
       :isOpen="isModalOpen"
       :note="editingNote"
       :folders="folders"
-      :tags="tags"
-      :defaultFolder="selectedFolder"
-      :defaultTag="selectedTag"
+      :tags="tagNames"
+      :defaultFolderId="defaultFolderId"
+      :defaultTag="defaultTag"
       :saving="isSaving"
       @close="closeModal"
       @saved="saveNote"
       @delete="deleteFromEditor"
+    />
+
+    <FolderNameDialog
+      :isOpen="folderDialog.open"
+      :folder="folderDialog.folder"
+      :error="folderDialog.error"
+      :saving="folderDialog.saving"
+      @close="closeFolderDialog"
+      @save="saveFolder"
+    />
+
+    <ConfirmDialog
+      :isOpen="!!folderToDelete"
+      title="Excluir pasta?"
+      :message="deleteFolderMessage"
+      confirmLabel="Excluir pasta"
+      :busy="deletingFolder"
+      @cancel="folderToDelete = null"
+      @confirm="confirmDeleteFolder"
     />
 
     <!-- Excluir é imediato na tela e só vale de verdade depois do prazo: dá tempo de desfazer -->
@@ -133,36 +232,75 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, reactive, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
+import FolderNameDialog from '../components/notes/FolderNameDialog.vue'
+import CollectionTile from '../components/common/CollectionTile.vue'
+import ConfirmDialog from '../components/common/ConfirmDialog.vue'
+import type { KebabItem } from '../components/common/KebabMenu.vue'
 import { api } from '@/services/api'
 import { filterNotes } from '@/utils/search'
+import { noteColorVar } from '@/utils/noteColor'
+import {
+  SORT_OPTIONS,
+  DEFAULT_SORT,
+  isSortMode,
+  sortNotes,
+  tagCounts,
+  hasTag,
+  notesInFolder,
+  type SortMode
+} from '@/utils/notesView'
 import { ApiError } from '@/services/http'
+import type { Note } from '@/types/Note'
+import type { Folder } from '@/types/Folder'
 import { useToast } from 'primevue/usetoast'
 
-type View = 'all' | 'favorites'
+type View = 'all' | 'folders' | 'tags'
+type Mode = 'all' | 'folders' | 'folder' | 'tags' | 'tag' | 'search'
 
-// DECLARAÇÕES
-const notes = ref<any[]>([])
-const folders = ref<string[]>([])
-const tags = ref<string[]>([])
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+
+// DADOS: carregados uma vez; pastas, tags, busca e ordem são aplicadas aqui, sem ir ao servidor
+const notes = ref<Note[]>([])
+const folders = ref<Folder[]>([])
 const isLoading = ref(true)
 const isSaving = ref(false)
 const isModalOpen = ref(false)
-const editingNote = ref<any>(null)
+const editingNote = ref<Note | null>(null)
 const searchQuery = ref('')
-const selectedFolder = ref<string | null>(null)
-const selectedTag = ref<string | null>(null)
-const view = ref<View>('all')
-const toast = useToast()
+const favoritesOnly = ref(false)
 
-// Tempo para desfazer uma exclusão; só depois disso a nota é apagada no servidor
+// ORDEM: preferência guardada no navegador
+const SORT_KEY = 'noteesapp-sort'
+const readSort = (): SortMode => {
+  try {
+    const stored = localStorage.getItem(SORT_KEY)
+    if (isSortMode(stored)) return stored
+  } catch {
+    // localStorage indisponível: usa a ordem padrão
+  }
+  return DEFAULT_SORT
+}
+const sortMode = ref<SortMode>(readSort())
+watch(sortMode, value => {
+  try {
+    localStorage.setItem(SORT_KEY, value)
+  } catch {
+    // a preferência vale só para esta sessão
+  }
+})
+
+// EXCLUIR NOTA: tempo para desfazer; só depois disso a nota é apagada no servidor
 const UNDO_MS = 6000
 
 interface PendingDelete {
-  note: any
+  note: Note
   timer: ReturnType<typeof setTimeout>
 }
 
@@ -170,38 +308,93 @@ interface PendingDelete {
 const pendingDelete = shallowRef<PendingDelete | null>(null)
 let hasLoaded = false
 
-// COMPUTED
-const activeFilter = computed(() => {
-  if (selectedFolder.value) return `Pasta: ${selectedFolder.value}`
-  if (selectedTag.value) return `Tag: ${selectedTag.value}`
-  return null
+// ONDE ESTOU: a URL guarda a visão e a pasta/tag aberta (?view=folders&folder=3), então Voltar e links funcionam
+const queryText = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
+
+const view = computed<View>(() => {
+  const value = queryText(route.query.view)
+  return value === 'folders' || value === 'tags' ? value : 'all'
+})
+const folderParam = computed(() => (view.value === 'folders' ? queryText(route.query.folder) : null))
+const tagParam = computed(() => (view.value === 'tags' ? queryText(route.query.tag) : null))
+
+const mode = computed<Mode>(() => {
+  if (searchQuery.value.trim()) return 'search'
+  if (view.value === 'folders') return folderParam.value ? 'folder' : 'folders'
+  if (view.value === 'tags') return tagParam.value ? 'tag' : 'tags'
+  return 'all'
 })
 
-// Favoritas primeiro, depois as mais recentes
-const sortedNotes = computed(() => {
-  const sorted = [...notes.value]
+// A pasta aberta: "Sem pasta" (folder=none), uma pasta real, ou nada se o id não existir
+type OpenFolder = { kind: 'none' } | { kind: 'folder'; folder: Folder }
 
-  sorted.sort((a: any, b: any) => {
-    if (a.isPinned && !b.isPinned) return -1
-    if (!a.isPinned && b.isPinned) return 1
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
+const openFolder = computed<OpenFolder | null>(() => {
+  if (mode.value !== 'folder') return null
+  if (folderParam.value === 'none') return { kind: 'none' }
 
-  return sorted
+  const folder = folders.value.find(f => String(f.id) === folderParam.value)
+  return folder ? { kind: 'folder', folder } : null
 })
 
-const favoritesCount = computed(() => notes.value.filter(n => n.isPinned).length)
+const scopeTitle = computed(() => {
+  if (mode.value === 'tag') return tagParam.value ?? ''
+  if (openFolder.value?.kind === 'none') return 'Sem pasta'
+  return openFolder.value?.kind === 'folder' ? openFolder.value.folder.name : 'Pasta não encontrada'
+})
+
+// NÚMEROS
+const countsByFolder = computed(() => {
+  const counts = new Map<number | null, number>()
+  for (const note of notes.value) {
+    const key = note.folderId ?? null
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return counts
+})
+
+const tagList = computed(() => tagCounts(notes.value))
+const tagNames = computed(() => tagList.value.map(tag => tag.name))
 
 const tabs = computed(() => [
-  { key: 'all' as const, label: 'Todas as notas', icon: 'pi pi-file', count: notes.value.length },
-  { key: 'favorites' as const, label: 'Favoritas', icon: 'pi pi-star', count: favoritesCount.value }
+  // "extra" some visualmente no celular (falta espaço) mas continua para leitores de tela: "Todas as notas"
+  { key: 'all' as const, label: 'Todas', extra: ' as notas', icon: 'pi pi-file', count: notes.value.length },
+  { key: 'folders' as const, label: 'Pastas', extra: '', icon: 'pi pi-folder', count: folders.value.length },
+  { key: 'tags' as const, label: 'Tags', extra: '', icon: 'pi pi-hashtag', count: tagList.value.length }
 ])
 
-// Busca: filtra uma cópia, então apagar letras traz as notas de volta
-const visibleNotes = computed(() => {
-  const base = view.value === 'favorites' ? sortedNotes.value.filter(n => n.isPinned) : sortedNotes.value
-  return filterNotes(base, searchQuery.value)
+// O QUE APARECE: as notas do lugar onde estou, só as favoritas se pedido, a busca e a ordem por data
+const scopeNotes = computed<Note[]>(() => {
+  if (mode.value === 'folder') {
+    if (openFolder.value?.kind === 'none') return notesInFolder(notes.value, null)
+    return openFolder.value?.kind === 'folder' ? notesInFolder(notes.value, openFolder.value.folder.id) : []
+  }
+  if (mode.value === 'tag') return notes.value.filter(note => hasTag(note, tagParam.value ?? ''))
+  return notes.value
 })
+
+const visibleNotes = computed(() => {
+  const base = favoritesOnly.value ? scopeNotes.value.filter(note => note.isPinned) : scopeNotes.value
+  return sortNotes(filterNotes(base, searchQuery.value), sortMode.value)
+})
+
+// Ordem e favoritas só fazem sentido quando há uma lista de notas na tela (não nas grades de pastas/tags)
+const showListControls = computed(() => mode.value !== 'folders' && mode.value !== 'tags')
+
+// Ao criar uma nota, ela já vem na pasta/tag em que estou
+const defaultFolderId = computed(() => (openFolder.value?.kind === 'folder' ? openFolder.value.folder.id : null))
+const defaultTag = computed(() => (mode.value === 'tag' ? tagParam.value : null))
+
+// NAVEGAÇÃO
+const go = (query: Record<string, string>) => router.push({ path: '/', query })
+
+const setView = (next: View) => {
+  searchQuery.value = ''
+  go(next === 'all' ? {} : { view: next })
+}
+
+const openFolderById = (id: number) => go({ view: 'folders', folder: String(id) })
+const openNoFolder = () => go({ view: 'folders', folder: 'none' })
+const openTagNamed = (name: string) => go({ view: 'tags', tag: name })
 
 // Setas, Home e End movem entre as abas (padrão de abas acessíveis)
 const onTabKeydown = (event: KeyboardEvent) => {
@@ -216,11 +409,11 @@ const onTabKeydown = (event: KeyboardEvent) => {
   else return
 
   event.preventDefault()
-  view.value = order[next]!
+  setView(order[next]!)
   document.getElementById(`tab-${order[next]}`)?.focus()
 }
 
-// Falha de sessão (401) já é tratada redirecionando para o login: não precisa de toast.
+// ERROS: falha de sessão (401) já é tratada redirecionando para o login: não precisa de toast.
 // Qualquer outro erro da API (rede fora, servidor dormindo, 5xx) aparece para o usuário.
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback
@@ -230,17 +423,14 @@ const notifyError = (error: unknown, fallback: string) => {
   toast.add({ severity: 'error', summary: 'Erro', detail: errorMessage(error, fallback), life: 5000 })
 }
 
-const clearSearch = () => {
-  searchQuery.value = ''
-}
-
+// CARGA
 // O "Carregando..." aparece só na primeira carga; depois a lista continua na tela enquanto atualiza
 const loadNotes = async () => {
   try {
     isLoading.value = !hasLoaded
-    const loaded = await api.getNotes(selectedFolder.value ?? undefined, selectedTag.value ?? undefined)
+    const loaded = await api.getNotes()
     // Uma nota excluída que ainda pode ser desfeita continua no servidor, mas não volta para a tela
-    notes.value = loaded.filter((n: any) => n.id !== pendingDelete.value?.note.id)
+    notes.value = loaded.filter(n => n.id !== pendingDelete.value?.note.id)
   } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
@@ -260,44 +450,49 @@ const loadFolders = async () => {
   }
 }
 
-const loadTags = async () => {
-  try {
-    tags.value = await api.getTags()
-  } catch (error) {
-    console.error('Erro ao buscar tags:', error)
-    notifyError(error, 'Erro ao carregar as tags')
-  }
+// Notas e pastas andam juntas: criar/excluir uma nota pode criar uma pasta, excluir uma pasta solta as notas
+const refreshAll = () => Promise.all([loadNotes(), loadFolders()])
+
+// BUSCA
+const handleSearch = (query: string) => {
+  searchQuery.value = query
 }
 
-// Notas, pastas e tags andam juntas: criar/excluir uma nota pode criar ou fazer sumir uma pasta ou tag
-const refreshAll = () => Promise.all([loadNotes(), loadFolders(), loadTags()])
-
-const selectFolder = (folder: string) => {
-  selectedFolder.value = folder
-  selectedTag.value = null
-  loadNotes()
+const clearSearch = () => {
+  searchQuery.value = ''
 }
 
-const selectTag = (tag: string) => {
-  selectedTag.value = tag
-  selectedFolder.value = null
-  loadNotes()
-}
-
-const clearFilters = () => {
-  selectedFolder.value = null
-  selectedTag.value = null
-  loadNotes()
-}
-
+// NOTAS: criar, abrir (editar), favoritar, excluir
 const handleCreateNote = () => {
   editingNote.value = null
   isModalOpen.value = true
 }
 
-const handleEditNote = (note: any) => {
+const handleEditNote = (note: Note) => {
   editingNote.value = note
   isModalOpen.value = true
+}
+
+const closeModal = () => {
+  isModalOpen.value = false
+  editingNote.value = null
+}
+
+// A estrela muda na hora; se a API recusar, volta ao que era
+const handleTogglePin = async (id: number) => {
+  const note = notes.value.find(n => n.id === id)
+  if (!note) return
+
+  const next = !note.isPinned
+  note.isPinned = next
+
+  try {
+    await api.updateNote({ ...note, isPinned: next })
+  } catch (error: any) {
+    console.error('Erro ao atualizar nota:', error)
+    note.isPinned = !next
+    notifyError(error, 'Erro ao atualizar nota')
+  }
 }
 
 // Apaga no servidor e atualiza as listas; se falhar, a nota volta para a tela
@@ -340,33 +535,18 @@ const deleteFromEditor = (note: { id: number }) => {
   handleDeleteNote(note.id)
 }
 
-// A estrela muda na hora; se a API recusar, volta ao que era
-const handleTogglePin = async (id: number) => {
-  const note = notes.value.find(n => n.id === id)
-  if (!note) return
-
-  const next = !note.isPinned
-  note.isPinned = next
-
-  try {
-    await api.updateNote({ ...note, isPinned: next })
-  } catch (error: any) {
-    console.error('Erro ao atualizar nota:', error)
-    note.isPinned = !next
-    notifyError(error, 'Erro ao atualizar nota')
-  }
-}
-
-// A nota nova precisa aparecer: se o filtro, a busca ou a aba escondem ela, eles saem do caminho
-const revealIfHidden = (saved: any) => {
+// A nota nova precisa aparecer: se a pasta/tag aberta, a busca ou as favoritas a escondem, eles saem do caminho
+const revealIfHidden = (saved: Note) => {
   let revealed = false
 
-  const hiddenByFilter =
-    (selectedFolder.value && saved.folder !== selectedFolder.value) ||
-    (selectedTag.value && !(saved.tags ?? []).includes(selectedTag.value))
-  if (hiddenByFilter) {
-    selectedFolder.value = null
-    selectedTag.value = null
+  const openFolderId = openFolder.value?.kind === 'folder' ? openFolder.value.folder.id : null
+  const outsideFolder =
+    mode.value === 'folder' &&
+    (openFolder.value?.kind === 'none' ? (saved.folderId ?? null) !== null : (saved.folderId ?? null) !== openFolderId)
+  const outsideTag = mode.value === 'tag' && !hasTag(saved, tagParam.value ?? '')
+
+  if (outsideFolder || outsideTag) {
+    go({})
     revealed = true
   }
 
@@ -375,8 +555,8 @@ const revealIfHidden = (saved: any) => {
     revealed = true
   }
 
-  if (view.value === 'favorites' && !saved.isPinned) {
-    view.value = 'all'
+  if (favoritesOnly.value && !saved.isPinned) {
+    favoritesOnly.value = false
     revealed = true
   }
 
@@ -411,13 +591,108 @@ const saveNote = async (noteData: any) => {
   }
 }
 
-const handleSearch = (query: string) => {
-  searchQuery.value = query
+// PASTAS: criar, renomear e excluir (excluir nunca apaga as notas)
+const folderMenu: KebabItem[] = [
+  { key: 'rename', label: 'Renomear', icon: 'pi pi-pencil' },
+  { key: 'delete', label: 'Excluir pasta', icon: 'pi pi-trash', danger: true }
+]
+
+const folderDialog = reactive<{ open: boolean; folder: Folder | null; error: string; saving: boolean }>({
+  open: false,
+  folder: null,
+  error: '',
+  saving: false
+})
+
+const openCreateFolder = () => {
+  Object.assign(folderDialog, { open: true, folder: null, error: '', saving: false })
 }
 
-const closeModal = () => {
-  isModalOpen.value = false
-  editingNote.value = null
+const openRenameFolder = (folder: Folder) => {
+  Object.assign(folderDialog, { open: true, folder, error: '', saving: false })
+}
+
+const closeFolderDialog = () => {
+  folderDialog.open = false
+}
+
+const saveFolder = async (name: string) => {
+  folderDialog.saving = true
+  folderDialog.error = ''
+
+  try {
+    if (folderDialog.folder) {
+      await api.renameFolder(folderDialog.folder.id, name)
+      toast.add({ severity: 'success', summary: 'Pasta renomeada!', life: 3000 })
+    } else {
+      await api.createFolder(name)
+      toast.add({ severity: 'success', summary: 'Pasta criada!', life: 3000 })
+    }
+
+    closeFolderDialog()
+    await refreshAll()
+  } catch (error: any) {
+    console.error('Erro ao salvar pasta:', error)
+
+    // Nome repetido: o aviso fica no próprio campo, onde dá para corrigir
+    if (error instanceof ApiError && (error.status === 409 || error.status === 400)) folderDialog.error = error.message
+    else notifyError(error, 'Erro ao salvar a pasta. Tente novamente.')
+  } finally {
+    folderDialog.saving = false
+  }
+}
+
+const onFolderMenu = (folder: Folder, key: string) => {
+  if (key === 'rename') openRenameFolder(folder)
+  else if (key === 'delete') askDeleteFolder(folder)
+}
+
+const folderToDelete = ref<Folder | null>(null)
+const deletingFolder = ref(false)
+
+const askDeleteFolder = (folder: Folder) => {
+  folderToDelete.value = folder
+}
+
+const deleteFolderMessage = computed(() => {
+  const folder = folderToDelete.value
+  if (!folder) return ''
+
+  const count = countsByFolder.value.get(folder.id) ?? 0
+  const detail =
+    count === 0
+      ? 'Ela está vazia.'
+      : `${count === 1 ? 'A nota' : `As ${count} notas`} dentro dela não ${count === 1 ? 'será apagada' : 'serão apagadas'}: ${count === 1 ? 'fica' : 'ficam'} em “Sem pasta”.`
+
+  return `Excluir a pasta “${folder.name}”? ${detail}`
+})
+
+const confirmDeleteFolder = async () => {
+  const folder = folderToDelete.value
+  if (!folder) return
+
+  deletingFolder.value = true
+  const count = countsByFolder.value.get(folder.id) ?? 0
+
+  try {
+    await api.deleteFolder(folder.id)
+    folderToDelete.value = null
+    toast.add({
+      severity: 'info',
+      summary: 'Pasta excluída',
+      detail: count > 0 ? `${count === 1 ? 'A nota está' : `As ${count} notas estão`} em “Sem pasta”.` : undefined,
+      life: 4000
+    })
+
+    // Se eu estava dentro dela, volto para a lista de pastas
+    if (openFolder.value?.kind === 'folder' && openFolder.value.folder.id === folder.id) setView('folders')
+    await refreshAll()
+  } catch (error: any) {
+    console.error('Erro ao excluir pasta:', error)
+    notifyError(error, 'Erro ao excluir a pasta')
+  } finally {
+    deletingFolder.value = false
+  }
 }
 
 onMounted(refreshAll)
@@ -433,8 +708,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Abas + botão de criar (como no topo do painel de referência) */
-.tabs-bar {
+/* Abas (Todas | Pastas | Tags) + ordem, favoritas e botão de criar */
+.toolbar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -476,6 +751,10 @@ onBeforeUnmount(() => {
   border-bottom-color: var(--accent-color);
 }
 
+.tab {
+  white-space: nowrap;
+}
+
 .tab .pi {
   font-size: 16px;
 }
@@ -496,12 +775,72 @@ onBeforeUnmount(() => {
   color: var(--accent-text);
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sort-select {
+  min-height: 40px;
+  padding: 0 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sort-select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.toggle.active {
+  color: var(--star);
+  border-color: color-mix(in srgb, var(--star) 55%, transparent);
+  background: color-mix(in srgb, var(--star) 12%, transparent);
+}
+
 .btn-add {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  margin-bottom: 6px;
   padding: 0 18px;
   background: var(--accent-strong);
   border: none;
@@ -523,42 +862,110 @@ onBeforeUnmount(() => {
   transform: translateY(1px);
 }
 
-.filter-row {
+/* Caminho (Pastas > Trabalho) e ações da pasta aberta */
+.scope-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   margin-bottom: 16px;
 }
 
-.active-filter {
-  display: inline-flex;
+.breadcrumb ol {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px 6px 14px;
-  background: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
-  border-radius: 999px;
-  color: var(--accent-text);
-  font-size: 13px;
-  font-weight: 600;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
 }
 
-.clear-filter {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+.breadcrumb li + li::before {
+  content: '›';
+  margin-right: 6px;
+  color: var(--text-tertiary);
+}
+
+.crumb-link {
+  padding: 4px 6px;
+  background: none;
   border: none;
-  border-radius: 50%;
-  color: inherit;
+  border-radius: 6px;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 500;
   cursor: pointer;
 }
 
-.clear-filter:hover {
+.crumb-link:hover {
   background: var(--accent-soft);
 }
 
-.clear-filter .pi-times {
-  font-size: 12px;
+.crumb-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.crumb-current .pi {
+  color: var(--accent-text);
+}
+
+.scope-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.link-btn.danger {
+  color: var(--danger);
+}
+
+.link-btn.danger:hover {
+  background: var(--danger-soft);
+}
+
+.search-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hint {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .loading {
@@ -687,25 +1094,87 @@ onBeforeUnmount(() => {
   background: var(--accent-glow);
 }
 
-/* Grade: 1 coluna no celular, até 4 no desktop largo */
+/* Grade de notas: 1 coluna no celular, até 4 no desktop largo */
 .notes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 
+/* Grade de pastas / tags */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.tile-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 74px;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tile-add:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-color);
+  color: var(--accent-text);
+}
+
 @media (max-width: 767px) {
   /* Botão de criar em largura total no topo; as abas ficam logo abaixo, com a linha de base */
-  .tabs-bar {
+  .toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
 
+  .toolbar-actions {
+    order: -1;
+    margin-bottom: 4px;
+  }
+
   .btn-add {
+    flex: 1 1 100%;
     order: -1;
     justify-content: center;
-    margin-bottom: 4px;
+  }
+
+  /* Ordem e Favoritas dividem a mesma linha: o select encolhe, o botão não */
+  .sort {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sort-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toggle {
+    flex-shrink: 0;
+  }
+
+  .tab-extra {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .tabs {
@@ -715,11 +1184,20 @@ onBeforeUnmount(() => {
   .tab {
     flex: 1;
     justify-content: center;
-    padding: 0 8px;
+    padding: 0 6px;
+    gap: 6px;
   }
 
-  .notes-grid {
+  .notes-grid,
+  .tiles {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Telas muito estreitas: sem os ícones as três abas cabem na linha */
+@media (max-width: 400px) {
+  .tab .pi {
+    display: none;
   }
 }
 </style>

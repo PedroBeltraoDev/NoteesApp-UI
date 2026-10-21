@@ -9,7 +9,7 @@
     :class="{ expanded, open: mobileOpen }"
     @keydown.esc="onEscape"
   >
-    <a :href="homeHref" class="rail-brand" aria-label="NoteesApp: ir para as notas" @click.prevent="goHome">
+    <a :href="homeHref" class="rail-brand" aria-label="NoteesApp: ir para as notas" @click.prevent="goNotes">
       <AppLogo :size="40" :wordmark="expanded || mobileOpen" />
     </a>
 
@@ -17,44 +17,14 @@
       <a
         :href="homeHref"
         class="rail-item"
-        :class="{ active: onNotes && !hasFilter && !flyout }"
-        :aria-current="onNotes && !hasFilter ? 'page' : undefined"
+        :class="{ active: onNotes }"
+        :aria-current="onNotes ? 'page' : undefined"
         title="Notas"
         @click.prevent="goNotes"
       >
         <i class="pi pi-file" aria-hidden="true"></i>
         <span class="rail-label">Notas</span>
       </a>
-
-      <template v-if="showFilters">
-        <button
-          ref="foldersBtn"
-          type="button"
-          class="rail-item"
-          :class="{ active: !!selectedFolder || flyout === 'folders' }"
-          :aria-expanded="flyout === 'folders'"
-          aria-haspopup="dialog"
-          title="Pastas"
-          @click="toggleFlyout('folders')"
-        >
-          <i class="pi pi-folder" aria-hidden="true"></i>
-          <span class="rail-label">Pastas</span>
-        </button>
-
-        <button
-          ref="tagsBtn"
-          type="button"
-          class="rail-item"
-          :class="{ active: !!selectedTag || flyout === 'tags' }"
-          :aria-expanded="flyout === 'tags'"
-          aria-haspopup="dialog"
-          title="Tags"
-          @click="toggleFlyout('tags')"
-        >
-          <i class="pi pi-hashtag" aria-hidden="true"></i>
-          <span class="rail-label">Tags</span>
-        </button>
-      </template>
 
       <a
         :href="settingsHref"
@@ -87,44 +57,25 @@
       </button>
     </div>
   </aside>
-
-  <!-- Painel de pastas/tags: ao lado da barra no desktop, folha no topo no celular -->
-  <div v-if="flyout" ref="flyoutWrap" class="flyout-wrap">
-    <FilterFlyout
-      :kind="flyout"
-      :items="flyout === 'folders' ? folders : tags"
-      :selected="flyout === 'folders' ? selectedFolder : selectedTag"
-      @select="pick"
-      @close="closeFlyout(true)"
-    />
-  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLogo from '@/components/common/AppLogo.vue'
-import FilterFlyout from './FilterFlyout.vue'
 import { useTheme } from '@/composables/useTheme'
 
+// Pastas e tags são navegadas dentro da tela de notas (Todas | Pastas | Tags); aqui ficam só as páginas do app
 const props = withDefaults(
   defineProps<{
     expanded?: boolean
     mobileOpen?: boolean
-    showFilters?: boolean
-    folders?: string[]
-    tags?: string[]
-    selectedFolder?: string | null
-    selectedTag?: string | null
   }>(),
-  { expanded: false, mobileOpen: false, showFilters: false, folders: () => [], tags: () => [], selectedFolder: null, selectedTag: null }
+  { expanded: false, mobileOpen: false }
 )
 
 const emit = defineEmits<{
   'update:mobileOpen': [value: boolean]
-  selectFolder: [folder: string]
-  selectTag: [tag: string]
-  clearFilters: []
   logout: []
 }>()
 
@@ -133,10 +84,6 @@ const route = useRoute()
 const { isDark, toggle: toggleTheme } = useTheme()
 
 const rail = ref<HTMLElement | null>(null)
-const flyoutWrap = ref<HTMLElement | null>(null)
-const foldersBtn = ref<HTMLButtonElement | null>(null)
-const tagsBtn = ref<HTMLButtonElement | null>(null)
-const flyout = ref<'folders' | 'tags' | null>(null)
 
 const HOME = '/'
 const SETTINGS = '/configuracoes'
@@ -144,71 +91,22 @@ const homeHref = computed(() => router.resolve(HOME).href)
 const settingsHref = computed(() => router.resolve(SETTINGS).href)
 const onNotes = computed(() => route.path === HOME)
 const onSettings = computed(() => route.path === SETTINGS)
-const hasFilter = computed(() => !!props.selectedFolder || !!props.selectedTag)
 
 const closeMobile = () => emit('update:mobileOpen', false)
 
-const closeFlyout = (returnFocus = false) => {
-  const opener = flyout.value === 'folders' ? foldersBtn.value : tagsBtn.value
-  flyout.value = null
-  if (returnFocus) opener?.focus()
-}
-
-const toggleFlyout = (kind: 'folders' | 'tags') => {
-  flyout.value = flyout.value === kind ? null : kind
-}
-
-const goHome = async () => {
-  closeFlyout()
-  closeMobile()
-  if (hasFilter.value) emit('clearFilters')
-  await router.push(HOME)
-}
-
-// "Notas" volta à lista completa: limpa pasta/tag quando houver
+// "Notas" sempre volta ao começo: todas as notas, sem pasta nem tag abertas
 const goNotes = async () => {
-  closeFlyout()
   closeMobile()
-  if (onNotes.value) {
-    if (hasFilter.value) emit('clearFilters')
-    return
-  }
   await router.push(HOME)
 }
 
 const goSettings = async () => {
-  closeFlyout()
   closeMobile()
   await router.push(SETTINGS)
 }
 
-const pick = (value: string) => {
-  if (flyout.value === 'folders') emit('selectFolder', value)
-  else if (flyout.value === 'tags') emit('selectTag', value)
-  flyout.value = null
-  closeMobile()
-}
-
-const onEscape = (event: KeyboardEvent) => {
-  if (flyout.value) {
-    event.stopPropagation()
-    closeFlyout(true)
-  } else if (props.mobileOpen) {
-    closeMobile()
-  }
-}
-
-// Clique fora fecha o painel de pastas/tags
-const onDocumentPointerDown = (event: Event) => {
-  if (!flyout.value) return
-  const target = event.target as Node
-  const inside =
-    flyoutWrap.value?.contains(target) || foldersBtn.value?.contains(target) || tagsBtn.value?.contains(target)
-  if (!inside) flyout.value = null
-}
-
-const onDocumentKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && flyout.value) closeFlyout(true)
+const onEscape = () => {
+  if (props.mobileOpen) closeMobile()
 }
 
 // Gaveta no celular: leva o foco para dentro ao abrir e devolve ao botão do cabeçalho ao fechar
@@ -226,16 +124,6 @@ watch(
     }
   }
 )
-
-onMounted(() => {
-  document.addEventListener('pointerdown', onDocumentPointerDown)
-  document.addEventListener('keydown', onDocumentKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-  document.removeEventListener('keydown', onDocumentKeydown)
-})
 </script>
 
 <style scoped>
@@ -317,8 +205,7 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
 }
 
-.rail-item.active,
-.rail-item[aria-expanded='true'] {
+.rail-item.active {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
@@ -334,13 +221,6 @@ onBeforeUnmount(() => {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-.flyout-wrap {
-  position: fixed;
-  top: 84px;
-  left: calc(var(--rail-current, var(--rail-w)) + 20px);
-  z-index: 60;
 }
 
 .rail-overlay {
@@ -389,17 +269,6 @@ onBeforeUnmount(() => {
     background: rgba(0, 0, 0, 0.6);
     z-index: 250;
     animation: overlayIn var(--transition-fast);
-  }
-
-  .flyout-wrap {
-    top: 72px;
-    left: 12px;
-    right: 12px;
-    z-index: 400;
-  }
-
-  .flyout-wrap :deep(.flyout) {
-    width: 100%;
   }
 }
 

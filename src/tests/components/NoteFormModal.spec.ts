@@ -18,7 +18,10 @@ const mountForm = (props: Record<string, unknown> = {}) =>
 
 type Wrapper = VueWrapper<any>
 
-const existing = { id: 5, title: 'Nota existente', content: 'Conteúdo existente', folder: 'Trabalho', tags: ['api'], isPinned: false }
+// Pastas de teste: ids em ordem (Trabalho = 1, Ideias = 2, ...), como a API devolve
+const folderOptions = (...names: string[]) => names.map((name, index) => ({ id: index + 1, name }))
+
+const existing = { id: 5, title: 'Nota existente', content: 'Conteúdo existente', folderId: 1, folder: 'Trabalho', tags: ['api'], isPinned: false }
 
 const button = (wrapper: Wrapper, text: string) => {
   const found = wrapper.findAll('button').find(b => b.text().replace(/\s+/g, ' ').trim() === text)
@@ -62,7 +65,7 @@ describe('NoteFormModal', () => {
   })
 
   it('loads the note being edited into the fields', () => {
-    const wrapper = mountForm({ note: { ...existing, tags: ['api', 'vue'] }, folders: ['Trabalho'] })
+    const wrapper = mountForm({ note: { ...existing, tags: ['api', 'vue'] }, folders: folderOptions('Trabalho') })
 
     expect((wrapper.find('#note-title').element as HTMLInputElement).value).toBe('Nota existente')
     expect((wrapper.find('#note-content').element as HTMLTextAreaElement).value).toBe('Conteúdo existente')
@@ -81,7 +84,7 @@ describe('NoteFormModal', () => {
   // ---------- Pasta: botões de escolha, sem lista flutuante
 
   it('offers the user real folders (sorted) as buttons, not a hardcoded list or a floating select', () => {
-    const wrapper = mountForm({ folders: ['Trabalho', 'Ideias', 'Segredos'] })
+    const wrapper = mountForm({ folders: folderOptions('Trabalho', 'Ideias', 'Segredos') })
 
     expect(choices(wrapper)).toEqual(['Sem pasta', 'Ideias', 'Segredos', 'Trabalho'])
     expect(choices(wrapper)).not.toContain('Aprendendo')
@@ -90,40 +93,40 @@ describe('NoteFormModal', () => {
   })
 
   it('folder buttons expose their state to assistive technology', () => {
-    const wrapper = mountForm({ folders: ['Trabalho'] })
+    const wrapper = mountForm({ folders: folderOptions('Trabalho') })
 
     expect(wrapper.find('[role="group"]').attributes('aria-labelledby')).toBe('note-folder-label')
     expect(wrapper.findAll('.choice:not(.add)').map(c => c.attributes('aria-pressed'))).toEqual(['true', 'false'])
   })
 
   it('includes the folder of the note being edited even if the list lacks it', () => {
-    const wrapper = mountForm({ folders: ['Ideias'], note: { ...existing, folder: 'Antiga' } })
+    const wrapper = mountForm({ folders: folderOptions('Ideias'), note: { ...existing, folderId: 99, folder: 'Antiga' } })
 
     expect(choices(wrapper)).toContain('Antiga')
     expect(activeChoice(wrapper)).toBe('Antiga')
   })
 
-  it('picking an existing folder saves the note in it', async () => {
-    const wrapper = mountForm({ folders: ['Trabalho', 'Ideias'] })
+  it('picking an existing folder saves the note in it, by id', async () => {
+    const wrapper = mountForm({ folders: folderOptions('Trabalho', 'Ideias') })
 
     await wrapper.find('#note-title').setValue('Nota')
     await button(wrapper, 'Ideias').trigger('click')
     await save(wrapper)
 
-    expect(saved(wrapper)).toMatchObject({ folder: 'Ideias' })
+    expect(saved(wrapper)).toMatchObject({ folderId: 2, folder: null })
   })
 
-  it('"Sem pasta" saves the folder as null', async () => {
-    const wrapper = mountForm({ folders: ['Trabalho'], note: existing })
+  it('"Sem pasta" saves the note with no folder', async () => {
+    const wrapper = mountForm({ folders: folderOptions('Trabalho'), note: existing })
 
     await button(wrapper, 'Sem pasta').trigger('click')
     await save(wrapper)
 
-    expect(saved(wrapper)).toMatchObject({ folder: null })
+    expect(saved(wrapper)).toMatchObject({ folderId: null, folder: null })
   })
 
   it('creating a folder happens inline: type a name, press Enter, and it is selected', async () => {
-    const wrapper = mountForm({ folders: ['Trabalho'] })
+    const wrapper = mountForm({ folders: folderOptions('Trabalho') })
 
     await wrapper.find('#note-title').setValue('Roteiro')
     await addFolder(wrapper, '  Viagens  ')
@@ -133,20 +136,38 @@ describe('NoteFormModal', () => {
     expect(wrapper.find('.choice-input').exists()).toBe(false)
 
     await save(wrapper)
-    expect(saved(wrapper)).toMatchObject({ folder: 'Viagens' })
+    // Pasta nova: vai só o nome (a API cria a pasta junto com a nota)
+    expect(saved(wrapper)).toMatchObject({ folderId: null, folder: 'Viagens' })
   })
 
   it('typing the name of an existing folder (any case) selects it instead of duplicating', async () => {
-    const wrapper = mountForm({ folders: ['Trabalho'] })
+    const wrapper = mountForm({ folders: folderOptions('Trabalho') })
 
     await addFolder(wrapper, 'trabalho')
 
     expect(choices(wrapper)).toEqual(['Sem pasta', 'Trabalho'])
     expect(activeChoice(wrapper)).toBe('Trabalho')
+
+    await wrapper.find('#note-title').setValue('Nota')
+    await save(wrapper)
+    expect(saved(wrapper)).toMatchObject({ folderId: 1, folder: null })
+  })
+
+  it('picking another folder after typing a new one replaces the new one', async () => {
+    const wrapper = mountForm({ folders: folderOptions('Trabalho') })
+    await addFolder(wrapper, 'Rascunho')
+    expect(choices(wrapper)).toContain('Rascunho')
+
+    await button(wrapper, 'Trabalho').trigger('click')
+
+    expect(activeChoice(wrapper)).toBe('Trabalho')
+    await wrapper.find('#note-title').setValue('Nota')
+    await save(wrapper)
+    expect(saved(wrapper)).toMatchObject({ folderId: 1, folder: null })
   })
 
   it('Escape in the new-folder field cancels it without selecting anything', async () => {
-    const wrapper = mountForm({ folders: ['Trabalho'] })
+    const wrapper = mountForm({ folders: folderOptions('Trabalho') })
 
     await button(wrapper, 'Nova pasta').trigger('click')
     await wrapper.find('.choice-input').setValue('Rascunho')
@@ -164,27 +185,27 @@ describe('NoteFormModal', () => {
     await wrapper.find('.choice-input').setValue('Pessoal')
     await save(wrapper)
 
-    expect(saved(wrapper)).toMatchObject({ folder: 'Pessoal' })
+    expect(saved(wrapper)).toMatchObject({ folderId: null, folder: 'Pessoal' })
   })
 
   // ---------- Pré-preenchimento a partir do filtro ativo
 
-  it('a new note starts in the folder and with the tag the user is filtering by', () => {
-    const wrapper = mountForm({ folders: ['Trabalho', 'Ideias'], defaultFolder: 'Ideias', defaultTag: 'urgente' })
+  it('a new note starts in the folder and with the tag the user is in', () => {
+    const wrapper = mountForm({ folders: folderOptions('Trabalho', 'Ideias'), defaultFolderId: 2, defaultTag: 'urgente' })
 
     expect(activeChoice(wrapper)).toBe('Ideias')
     expect(chips(wrapper)).toEqual(['urgente'])
   })
 
   it('the defaults are ignored when editing', () => {
-    const wrapper = mountForm({ note: existing, folders: ['Trabalho', 'Ideias'], defaultFolder: 'Ideias', defaultTag: 'urgente' })
+    const wrapper = mountForm({ note: existing, folders: folderOptions('Trabalho', 'Ideias'), defaultFolderId: 2, defaultTag: 'urgente' })
 
     expect(activeChoice(wrapper)).toBe('Trabalho')
     expect(chips(wrapper)).toEqual(['api'])
   })
 
   it('the pre-filled defaults do not count as unsaved changes', async () => {
-    const wrapper = mountForm({ defaultFolder: 'Ideias', defaultTag: 'urgente', folders: ['Ideias'] })
+    const wrapper = mountForm({ defaultFolderId: 1, defaultTag: 'urgente', folders: folderOptions('Ideias') })
 
     await button(wrapper, 'Cancelar').trigger('click')
 
@@ -284,7 +305,7 @@ describe('NoteFormModal', () => {
     await wrapper.find('#note-title').setValue('Pagar a conta de luz')
     await save(wrapper)
 
-    expect(saved(wrapper)).toEqual({ title: 'Pagar a conta de luz', content: '', folder: null, tags: [], isPinned: false })
+    expect(saved(wrapper)).toEqual({ title: 'Pagar a conta de luz', content: '', folderId: null, folder: null, tags: [], isPinned: false })
   })
 
   it('a short note is fine (no minimum length for title or content)', async () => {
