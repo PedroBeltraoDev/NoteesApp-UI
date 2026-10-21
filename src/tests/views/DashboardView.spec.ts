@@ -503,7 +503,7 @@ describe('DashboardView', () => {
     // ----- criar
 
     it('"Nova pasta" opens the name dialog; saving creates it and refreshes the list', async () => {
-      vi.mocked(api.createFolder).mockResolvedValue({ id: 3, name: 'Ideias', noteCount: 0 } as any)
+      vi.mocked(api.createFolder).mockResolvedValue({ id: 3, name: 'Ideias', noteCount: 0, createdAt: '' } as any)
       const { wrapper } = await mountDashboard('/?view=folders')
       expect(folderDialog(wrapper).props('isOpen')).toBe(false)
 
@@ -511,7 +511,6 @@ describe('DashboardView', () => {
       expect(folderDialog(wrapper).props('isOpen')).toBe(true)
       expect(folderDialog(wrapper).props('folder')).toBeNull()
 
-      vi.mocked(api.getFolders).mockResolvedValue([...freshFolders(), { id: 3, name: 'Ideias', noteCount: 0, createdAt: '' }] as any)
       folderDialog(wrapper).vm.$emit('save', 'Ideias')
       await flushPromises()
 
@@ -545,6 +544,35 @@ describe('DashboardView', () => {
 
       expect(folderDialog(wrapper).props('isOpen')).toBe(true)
       expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'Não foi possível conectar ao servidor.' }))
+    })
+
+    it('creating a folder shows it in order, without reloading anything', async () => {
+      vi.mocked(api.createFolder).mockResolvedValue({ id: 7, name: 'Estudos', noteCount: 0, createdAt: '' } as any)
+      const { wrapper } = await mountDashboard('/?view=folders')
+      await wrapper.find('.tile-add').trigger('click')
+
+      folderDialog(wrapper).vm.$emit('save', 'Estudos')
+      await flushPromises()
+
+      expect(tileNames(wrapper)).toEqual(['Sem pasta', 'Estudos', 'Pessoal', 'Trabalho'])
+      expect(api.getFolders).toHaveBeenCalledTimes(1)
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+    })
+
+    it('renaming a folder updates its tile and the folder name on its notes, without reloading', async () => {
+      vi.mocked(api.renameFolder).mockResolvedValue({ id: 1, name: 'Escritório', noteCount: 2, createdAt: '' } as any)
+      const { wrapper } = await mountDashboard('/?view=folders')
+
+      await folderMenuAction(wrapper, 'Trabalho', 'Renomear')
+      folderDialog(wrapper).vm.$emit('save', 'Escritório')
+      await flushPromises()
+
+      expect(tileNames(wrapper)).toEqual(['Sem pasta', 'Escritório', 'Pessoal'])
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+
+      await tile(wrapper, 'Escritório').find('.tile-open').trigger('click')
+      await flushPromises()
+      expect(wrapper.findAll('.note-folder-name').map(n => n.text())).toEqual(['Escritório', 'Escritório'])
     })
 
     // ----- renomear
@@ -623,19 +651,17 @@ describe('DashboardView', () => {
       expect(api.deleteFolder).not.toHaveBeenCalled()
     })
 
-    it('confirming deletes the folder, reloads notes (they lose their folder) and tells the user', async () => {
+    it('confirming deletes the folder and the screen updates by itself: notes lose their folder, nothing is reloaded', async () => {
       vi.mocked(api.deleteFolder).mockResolvedValue(undefined)
       const { wrapper } = await mountDashboard('/?view=folders')
       await folderMenuAction(wrapper, 'Trabalho', 'Excluir pasta')
 
-      // O servidor já devolve as notas sem pasta e a lista sem a pasta excluída
-      vi.mocked(api.getNotes).mockImplementation(async () => freshNotes().map(n => ({ ...n, folderId: null, folder: null })) as any)
-      vi.mocked(api.getFolders).mockResolvedValue([folders[1]] as any)
       confirm(wrapper).vm.$emit('confirm')
       await flushPromises()
 
       expect(api.deleteFolder).toHaveBeenCalledExactlyOnceWith(1)
-      expect(api.getNotes).toHaveBeenCalledTimes(2)
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+      expect(api.getFolders).toHaveBeenCalledTimes(1)
       expect(tileNames(wrapper)).toEqual(['Sem pasta', 'Pessoal'])
       expect(wrapper.findAll('.tile .tile-count')[0]!.text()).toBe('3 notas')
       expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Pasta excluída', detail: 'As 2 notas estão em “Sem pasta”.' }))
@@ -852,7 +878,7 @@ describe('DashboardView', () => {
       vi.unstubAllGlobals()
     })
 
-    it('after the undo window the note is deleted in the API and the lists are refreshed', async () => {
+    it('after the undo window the note is deleted in the API, with no reload (the screen already dropped it)', async () => {
       vi.mocked(api.deleteNote).mockResolvedValue(undefined)
       const { wrapper } = await mountDashboard()
       vi.useFakeTimers()
@@ -861,12 +887,13 @@ describe('DashboardView', () => {
       await vi.advanceTimersByTimeAsync(6000)
 
       expect(api.deleteNote).toHaveBeenCalledExactlyOnceWith(1)
-      expect(api.getNotes).toHaveBeenCalledTimes(2)
-      expect(api.getFolders).toHaveBeenCalledTimes(2)
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+      expect(api.getFolders).toHaveBeenCalledTimes(1)
+      expect(titles(wrapper)).toEqual(['Receita de bolo', 'Relatório mensal'])
       expect(undoBar(wrapper).exists()).toBe(false)
     })
 
-    it('"Desfazer" brings the note back and the API is never called', async () => {
+    it('"Desfazer" brings the note back without any request', async () => {
       const { wrapper } = await mountDashboard()
       vi.useFakeTimers()
       await deleteFromMenu(wrapper)
@@ -877,6 +904,7 @@ describe('DashboardView', () => {
       expect(titles(wrapper)).toEqual(['Reunião de planejamento', 'Receita de bolo', 'Relatório mensal'])
       expect(undoBar(wrapper).exists()).toBe(false)
       expect(api.deleteNote).not.toHaveBeenCalled()
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
     })
 
     it('a note waiting to be deleted does not come back when the list reloads', async () => {
@@ -953,8 +981,8 @@ describe('DashboardView', () => {
     const emitSaved = (wrapper: Wrapper, extra: Record<string, unknown> = {}) =>
       form(wrapper).vm.$emit('saved', { title: 'Roteiro', content: '', folderId: null, folder: null, tags: [], isPinned: false, ...extra })
 
-    it('saving closes the form, refreshes notes and folders, and tells the user', async () => {
-      vi.mocked(api.createNote).mockResolvedValue(created() as any)
+    it('saving closes the form, adds the saved note from the API response (no reload) and tells the user', async () => {
+      vi.mocked(api.createNote).mockResolvedValue(created({ title: 'Roteiro de viagem' }) as any)
       const { wrapper } = await mountDashboard()
       await wrapper.find('.btn-add').trigger('click')
 
@@ -963,9 +991,47 @@ describe('DashboardView', () => {
 
       expect(form(wrapper).props('isOpen')).toBe(false)
       expect(form(wrapper).props('saving')).toBe(false)
-      expect(api.getNotes).toHaveBeenCalledTimes(2)
-      expect(api.getFolders).toHaveBeenCalledTimes(2)
+      expect(titles(wrapper)).toContain('Roteiro de viagem')
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+      expect(api.getFolders).toHaveBeenCalledTimes(1)
       expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success', summary: 'Nota criada!' }))
+    })
+
+    it('editing replaces the note with the API response, in place', async () => {
+      vi.mocked(api.updateNote).mockResolvedValue({ ...notes[1], title: 'Receita de pão', content: 'Nova receita' } as any)
+      const { wrapper } = await mountDashboard()
+      await wrapper.findAll('.note-card')[1]!.trigger('click') // "Receita de bolo"
+
+      emitSaved(wrapper, { title: 'Receita de pão' })
+      await flushPromises()
+
+      expect(titles(wrapper)).toEqual(['Reunião de planejamento', 'Receita de pão', 'Relatório mensal'])
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
+    })
+
+    it('if the API answers without the note, the list is reloaded to stay right', async () => {
+      vi.mocked(api.updateNote).mockResolvedValue({} as any)
+      const { wrapper } = await mountDashboard()
+      await wrapper.findAll('.note-card')[0]!.trigger('click')
+
+      emitSaved(wrapper, { title: 'Outro' })
+      await flushPromises()
+
+      expect(api.getNotes).toHaveBeenCalledTimes(2)
+    })
+
+    it('a brand-new folder created with the note is the only reason to reload the folders', async () => {
+      vi.mocked(api.createNote).mockResolvedValue(created({ folderId: 3, folder: 'Viagens' }) as any)
+      const { wrapper } = await mountDashboard()
+      emitSaved(wrapper)
+      await flushPromises()
+      expect(api.getFolders).toHaveBeenCalledTimes(1)
+
+      emitSaved(wrapper, { folder: 'Viagens' })
+      await flushPromises()
+
+      expect(api.getFolders).toHaveBeenCalledTimes(2)
+      expect(api.getNotes).toHaveBeenCalledTimes(1)
     })
 
     it('a note in a brand-new folder sends only the name, and the new folder shows up', async () => {
@@ -1096,6 +1162,27 @@ describe('DashboardView', () => {
       await mountDashboard()
 
       expect(toastAdd).not.toHaveBeenCalled()
+    })
+
+    it('if the first load is slow it says the server is waking up, instead of just spinning', async () => {
+      vi.useFakeTimers()
+      let release!: (value: any) => void
+      vi.mocked(api.getNotes).mockReturnValue(new Promise(resolve => (release = resolve)))
+      const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div />' } }] })
+      await router.push('/')
+      const wrapper = mount(DashboardView, {
+        global: { plugins: [router], stubs: { AppShell: AppShellStub, NoteFormModal: FormStub, FolderNameDialog: FolderDialogStub, ConfirmDialog: ConfirmStub } }
+      })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(wrapper.find('.loading').text()).toBe('Carregando notas...')
+
+      await vi.advanceTimersByTimeAsync(2600)
+      expect(wrapper.find('.loading').text()).toContain('O servidor estava dormindo')
+
+      release(freshNotes())
+      await vi.advanceTimersByTimeAsync(0)
+      expect(wrapper.find('.loading').exists()).toBe(false)
+      vi.useRealTimers()
     })
 
     it('does not blank the screen with a spinner after the first load', async () => {

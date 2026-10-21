@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { initTheme } from './composables/useTheme'
+import { startKeepAlive } from './services/keepAlive'
+import { API_BASE_URL } from './services/http'
 
 import './styles/variables.css'
 import './styles/global.css'
@@ -46,3 +48,6 @@ app.component('PCard', Card)
 app.component('PDrawer', Drawer)
 
 app.mount('#app')
+
+// Acorda a API já na abertura e a mantém acordada enquanto o app está em uso
+startKeepAlive(API_BASE_URL)
