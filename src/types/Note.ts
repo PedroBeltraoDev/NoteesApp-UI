@@ -3,8 +3,10 @@ export interface Note {
   title: string;
   content: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt?: string | null;
   tags: string[];
-  folder?: string | null; 
+  // Pasta da nota: id e nome (null = sem pasta)
+  folderId?: number | null;
+  folder?: string | null;
   isPinned: boolean;
 }

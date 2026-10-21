@@ -76,14 +76,14 @@
         <div class="choices">
           <button
             v-for="option in folderChoices"
-            :key="option.value"
+            :key="option.key"
             type="button"
             class="choice"
-            :class="{ active: folder === option.value }"
-            :aria-pressed="folder === option.value"
-            @click="selectFolder(option.value)"
+            :class="{ active: isActive(option) }"
+            :aria-pressed="isActive(option)"
+            @click="selectFolder(option)"
           >
-            <i :class="option.value ? 'pi pi-folder' : 'pi pi-inbox'" aria-hidden="true"></i>
+            <i :class="option.kind === 'none' ? 'pi pi-inbox' : 'pi pi-folder'" aria-hidden="true"></i>
             {{ option.label }}
           </button>
 
@@ -181,10 +181,22 @@ interface EditableNote {
   id: number
   title: string
   content: string
+  folderId?: number | null
   folder?: string | null
   tags?: string[]
   isPinned: boolean
 }
+
+interface FolderOption {
+  id: number
+  name: string
+}
+
+// O que o usuário pode escolher como pasta: nenhuma, uma que já existe ou uma nova (criada junto com a nota)
+type FolderChoice =
+  | { key: string; kind: 'none'; label: string }
+  | { key: string; kind: 'existing'; label: string; id: number }
+  | { key: string; kind: 'new'; label: string }
 
 const MAX_TAGS = 20
 
@@ -192,10 +204,10 @@ const props = defineProps<{
   isOpen: boolean
   note: EditableNote | null
   // Pastas e tags que o usuário já tem (vêm da API)
-  folders?: string[]
+  folders?: FolderOption[]
   tags?: string[]
-  // Ao criar: a pasta/tag que o usuário está filtrando já vem preenchida
-  defaultFolder?: string | null
+  // Ao criar: a pasta/tag em que o usuário está já vem preenchida
+  defaultFolderId?: number | null
   defaultTag?: string | null
   // O pai está esperando a API responder
   saving?: boolean
@@ -212,13 +224,14 @@ const headingId = 'note-editor-title'
 const modalVisible = ref(false)
 const title = ref('')
 const content = ref('')
-const folder = ref('')
+const folderId = ref<number | null>(null)
+// Nome de uma pasta que ainda não existe: ela é criada junto com a nota
+const newFolder = ref<string | null>(null)
 const tagList = ref<string[]>([])
 const isPinned = ref(false)
 const tagDraft = ref('')
 const newFolderOpen = ref(false)
 const newFolderDraft = ref('')
-const extraFolders = ref<string[]>([])
 const errors = ref<{ title?: string; content?: string; folder?: string; tags?: string }>({})
 const confirmDiscard = ref(false)
 
@@ -233,14 +246,23 @@ const isEditing = computed(() => !!props.note)
 
 const sameName = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }) === 0
 
-// Pastas para escolher: as do usuário, a da nota em edição e as criadas agora neste formulário
-const folderChoices = computed(() => {
-  const names = new Set<string>([...(props.folders ?? []), ...extraFolders.value])
-  if (props.note?.folder) names.add(props.note.folder)
-  if (folder.value) names.add(folder.value)
+// Pastas para escolher: nenhuma, as do usuário (ordem alfabética) e a que está sendo criada agora neste formulário
+const folderChoices = computed<FolderChoice[]>(() => {
+  const options = new Map<number, string>((props.folders ?? []).map(f => [f.id, f.name]))
 
-  const sorted = [...names].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  return [{ label: 'Sem pasta', value: '' }, ...sorted.map(name => ({ label: name, value: name }))]
+  // A pasta da nota em edição entra mesmo que a lista ainda não a tenha
+  if (props.note?.folderId != null && props.note.folder && !options.has(props.note.folderId)) {
+    options.set(props.note.folderId, props.note.folder)
+  }
+
+  const existing = [...options.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+    .map(([id, name]): FolderChoice => ({ key: `folder-${id}`, kind: 'existing', label: name, id }))
+
+  const choices: FolderChoice[] = [{ key: 'none', kind: 'none', label: 'Sem pasta' }, ...existing]
+  if (newFolder.value) choices.push({ key: 'new', kind: 'new', label: newFolder.value })
+
+  return choices
 })
 
 // Sugestões: tags que o usuário já usa e que ainda não estão na nota (filtradas pelo que está sendo digitado)
@@ -251,7 +273,8 @@ const tagSuggestions = computed(() => {
     .slice(0, 8)
 })
 
-const snapshot = () => JSON.stringify([title.value, content.value, folder.value, tagList.value, isPinned.value])
+const snapshot = () =>
+  JSON.stringify([title.value, content.value, folderId.value, newFolder.value, tagList.value, isPinned.value])
 
 // Há algo a perder: mudanças nos campos ou texto digitado que ainda não virou tag/pasta
 const isDirty = computed(
@@ -262,14 +285,14 @@ const loadForm = () => {
   const note = props.note
   title.value = note?.title ?? ''
   content.value = note?.content ?? ''
-  folder.value = note ? (note.folder ?? '') : (props.defaultFolder ?? '')
+  folderId.value = note ? (note.folderId ?? null) : (props.defaultFolderId ?? null)
+  newFolder.value = null
   tagList.value = note ? [...(note.tags ?? [])] : props.defaultTag ? [props.defaultTag] : []
   isPinned.value = note?.isPinned ?? false
 
   tagDraft.value = ''
   newFolderOpen.value = false
   newFolderDraft.value = ''
-  extraFolders.value = []
   errors.value = {}
   confirmDiscard.value = false
   initialState = snapshot()
@@ -311,9 +334,23 @@ const discard = () => {
 
 // ---------- Pasta
 
-const selectFolder = (value: string) => {
-  folder.value = value
+const isActive = (option: FolderChoice) => {
+  if (option.kind === 'new') return newFolder.value !== null
+  if (newFolder.value !== null) return false
+  return option.kind === 'none' ? folderId.value === null : folderId.value === option.id
+}
+
+const selectFolder = (option: FolderChoice) => {
   errors.value.folder = ''
+
+  if (option.kind === 'existing') {
+    folderId.value = option.id
+    newFolder.value = null
+  } else if (option.kind === 'none') {
+    folderId.value = null
+    newFolder.value = null
+  }
+  // 'new' já é a escolha atual: clicar de novo não muda nada
 }
 
 const openNewFolder = async () => {
@@ -329,14 +366,15 @@ const confirmNewFolder = () => {
   if (!name) return
 
   // Digitar uma pasta que já existe só seleciona a existente
-  const existing = folderChoices.value.find(option => option.value && sameName(option.value, name))
+  const existing = folderChoices.value.find(option => option.kind === 'existing' && sameName(option.label, name))
   if (existing) {
-    selectFolder(existing.value)
+    selectFolder(existing)
     return
   }
 
-  extraFolders.value.push(name)
-  selectFolder(name)
+  folderId.value = null
+  newFolder.value = name
+  errors.value.folder = ''
 }
 
 const cancelNewFolder = () => {
@@ -395,7 +433,7 @@ const validate = () => {
 
   if (content.value.trim().length > 1000) next.content = 'A anotação deve ter no máximo 1000 caracteres'
 
-  if (folder.value.trim().length > 100) next.folder = 'O nome da pasta deve ter no máximo 100 caracteres'
+  if ((newFolder.value ?? '').length > 100) next.folder = 'O nome da pasta deve ter no máximo 100 caracteres'
 
   if (tagList.value.length > MAX_TAGS) next.tags = `Use no máximo ${MAX_TAGS} tags`
   else if (tagList.value.some(tag => tag.length > 50)) next.tags = 'Cada tag deve ter no máximo 50 caracteres'
@@ -420,7 +458,8 @@ const handleSubmit = () => {
   emit('saved', {
     title: title.value.trim(),
     content: content.value.trim(),
-    folder: folder.value.trim() || null,
+    folderId: newFolder.value ? null : folderId.value,
+    folder: newFolder.value,
     tags: [...tagList.value],
     isPinned: isPinned.value
   })
@@ -487,15 +526,6 @@ const handleDelete = () => {
   gap: 8px;
 }
 
-.field-label {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .optional {
   font-weight: 400;
   color: var(--text-tertiary);
@@ -552,11 +582,6 @@ textarea.field-input {
 
 .field-input[aria-invalid='true'] {
   border-color: var(--danger);
-}
-
-.field-error {
-  font-size: 12px;
-  color: var(--danger);
 }
 
 /* Pasta: botões de escolha (sem lista flutuante) */
@@ -730,65 +755,6 @@ textarea.field-input {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.btn-primary {
-  background: var(--accent-strong);
-  color: #ffffff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #166534;
-}
-
-.btn-ghost {
-  background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-.btn-ghost:hover {
-  background: var(--hover-bg);
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--danger);
-}
-
-.btn-danger:hover {
-  background: var(--danger-soft);
-}
-
-/* Vermelho fixo: o --danger do tema escuro é claro demais para texto branco (contraste AA) */
-.btn-danger.solid {
-  background: #b91c1c;
-  color: #ffffff;
-}
-
-.btn-danger.solid:hover {
-  background: #991b1b;
 }
 
 @media (max-width: 480px) {

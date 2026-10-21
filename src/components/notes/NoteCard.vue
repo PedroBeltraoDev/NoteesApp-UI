@@ -39,22 +39,13 @@ import { computed } from 'vue'
 import KebabMenu, { type KebabItem } from '@/components/common/KebabMenu.vue'
 import { noteColorVar } from '@/utils/noteColor'
 import { formatNoteDate } from '@/utils/formatDate'
+import type { Note } from '@/types/Note'
 
-interface CardNote {
-  id: number
-  title: string
-  content: string
-  createdAt: string
-  tags?: string[]
-  folder?: string | null
-  isPinned: boolean
-}
-
-const props = defineProps<{ note: CardNote }>()
+const props = defineProps<{ note: Note }>()
 
 // Clicar no cartão abre a nota já para edição: não existe uma segunda tela só de leitura
 const emit = defineEmits<{
-  edit: [note: CardNote]
+  edit: [note: Note]
   delete: [id: number]
   togglePin: [id: number]
 }>()

@@ -71,20 +71,21 @@ describe('AppShell', () => {
     without.wrapper.unmount()
   })
 
-  it('forwards search, folder, tag and clear events to the page', async () => {
-    const { wrapper } = await mountShell({ showSearch: true, showFilters: true, folders: ['Trabalho'], tags: ['casa'] })
+  it('forwards the search to the page', async () => {
+    const { wrapper } = await mountShell({ showSearch: true })
 
     await wrapper.find('#search-desktop').setValue('bolo')
-    await wrapper.find('.rail-item[title="Pastas"]').trigger('click')
-    await flushPromises()
-    await wrapper.find('.flyout-item').trigger('click')
-    await wrapper.find('.rail-item[title="Tags"]').trigger('click')
-    await flushPromises()
-    await wrapper.find('.flyout-item').trigger('click')
 
     expect(wrapper.emitted('search')?.[0]).toEqual(['bolo'])
-    expect(wrapper.emitted('selectFolder')?.[0]).toEqual(['Trabalho'])
-    expect(wrapper.emitted('selectTag')?.[0]).toEqual(['casa'])
+    wrapper.unmount()
+  })
+
+  it('has no folder/tag side panels: those are browsed inside the notes screen', async () => {
+    const { wrapper } = await mountShell({ showSearch: true })
+
+    expect(wrapper.find('.rail-item[title="Pastas"]').exists()).toBe(false)
+    expect(wrapper.find('.rail-item[title="Tags"]').exists()).toBe(false)
+    expect(wrapper.find('.flyout').exists()).toBe(false)
     wrapper.unmount()
   })
 

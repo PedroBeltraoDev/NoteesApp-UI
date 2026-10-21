@@ -3,19 +3,7 @@
     <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
 
     <div class="app">
-      <NavRail
-        v-model:mobileOpen="mobileOpen"
-        :expanded="expanded"
-        :showFilters="showFilters"
-        :folders="folders"
-        :tags="tags"
-        :selectedFolder="selectedFolder"
-        :selectedTag="selectedTag"
-        @selectFolder="$emit('selectFolder', $event)"
-        @selectTag="$emit('selectTag', $event)"
-        @clearFilters="$emit('clearFilters')"
-        @logout="handleLogout"
-      />
+      <NavRail v-model:mobileOpen="mobileOpen" :expanded="expanded" @logout="handleLogout" />
 
       <div class="app-main">
         <Topbar
@@ -49,20 +37,12 @@ withDefaults(
     title?: string
     search?: string
     showSearch?: boolean
-    showFilters?: boolean
-    folders?: string[]
-    tags?: string[]
-    selectedFolder?: string | null
-    selectedTag?: string | null
   }>(),
-  { title: 'Notas', search: undefined, showSearch: false, showFilters: false, folders: () => [], tags: () => [], selectedFolder: null, selectedTag: null }
+  { title: 'Notas', search: undefined, showSearch: false }
 )
 
 defineEmits<{
   search: [query: string]
-  selectFolder: [folder: string]
-  selectTag: [tag: string]
-  clearFilters: []
 }>()
 
 const router = useRouter()

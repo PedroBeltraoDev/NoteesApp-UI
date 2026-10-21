@@ -6,6 +6,7 @@ import { initTheme } from './composables/useTheme'
 import './styles/variables.css'
 import './styles/global.css'
 import './styles/animations.css'
+import './styles/ui.css'
 import './styles/primevue-overrides.css'
 
 import PrimeVue from 'primevue/config'
