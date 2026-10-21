@@ -31,7 +31,7 @@ describe('useTheme', () => {
     systemDark = true
     mediaListeners = []
     localStorage.clear()
-    document.body.className = ''
+    document.documentElement.className = ''
     document.documentElement.style.colorScheme = ''
     stubMatchMedia()
   })
@@ -45,8 +45,8 @@ describe('useTheme', () => {
 
     expect(useTheme().mode.value).toBe('system')
     expect(useTheme().isDark.value).toBe(true)
-    expect(document.body.classList.contains('dark-mode')).toBe(true)
-    expect(document.body.classList.contains('light-mode')).toBe(false)
+    expect(document.documentElement.classList.contains('dark-mode')).toBe(true)
+    expect(document.documentElement.classList.contains('light-mode')).toBe(false)
   })
 
   it('follows the system theme by default (light)', async () => {
@@ -56,8 +56,8 @@ describe('useTheme', () => {
     initTheme()
 
     expect(useTheme().isDark.value).toBe(false)
-    expect(document.body.classList.contains('light-mode')).toBe(true)
-    expect(document.body.classList.contains('dark-mode')).toBe(false)
+    expect(document.documentElement.classList.contains('light-mode')).toBe(true)
+    expect(document.documentElement.classList.contains('dark-mode')).toBe(false)
     expect(document.documentElement.style.colorScheme).toBe('light')
   })
 
@@ -67,8 +67,8 @@ describe('useTheme', () => {
 
     setThemeMode('light')
 
-    expect(document.body.classList.contains('light-mode')).toBe(true)
-    expect(document.body.classList.contains('dark-mode')).toBe(false)
+    expect(document.documentElement.classList.contains('light-mode')).toBe(true)
+    expect(document.documentElement.classList.contains('dark-mode')).toBe(false)
     expect(localStorage.getItem('noteesapp-theme')).toBe('light')
   })
 
@@ -101,7 +101,7 @@ describe('useTheme', () => {
     initTheme()
 
     expect(useTheme().mode.value).toBe('light')
-    expect(document.body.classList.contains('light-mode')).toBe(true)
+    expect(document.documentElement.classList.contains('light-mode')).toBe(true)
   })
 
   it('migrates the legacy "theme" key', async () => {
@@ -133,7 +133,7 @@ describe('useTheme', () => {
     mediaListeners.forEach(listener => listener({ matches: false }))
 
     expect(useTheme().isDark.value).toBe(false)
-    expect(document.body.classList.contains('light-mode')).toBe(true)
+    expect(document.documentElement.classList.contains('light-mode')).toBe(true)
   })
 
   it('does not follow the system once the user picked a theme', async () => {

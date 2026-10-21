@@ -115,14 +115,25 @@
       :isOpen="isModalOpen"
       :note="editingNote"
       :folders="folders"
+      :tags="tags"
+      :defaultFolder="selectedFolder"
+      :defaultTag="selectedTag"
+      :saving="isSaving"
       @close="closeModal"
       @saved="saveNote"
+      @delete="deleteFromEditor"
     />
+
+    <!-- Excluir é imediato na tela e só vale de verdade depois do prazo: dá tempo de desfazer -->
+    <div v-if="pendingDelete" class="undo-bar" role="status" aria-live="polite">
+      <span class="undo-text">Nota “{{ pendingDelete.note.title }}” excluída</span>
+      <button type="button" class="undo-btn" @click="undoDelete">Desfazer</button>
+    </div>
   </AppShell>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, shallowRef, onMounted, onBeforeUnmount, computed } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import NoteCard from '../components/notes/NoteCard.vue'
 import NoteFormModal from '../components/notes/NoteFormModal.vue'
@@ -138,6 +149,7 @@ const notes = ref<any[]>([])
 const folders = ref<string[]>([])
 const tags = ref<string[]>([])
 const isLoading = ref(true)
+const isSaving = ref(false)
 const isModalOpen = ref(false)
 const editingNote = ref<any>(null)
 const searchQuery = ref('')
@@ -145,6 +157,18 @@ const selectedFolder = ref<string | null>(null)
 const selectedTag = ref<string | null>(null)
 const view = ref<View>('all')
 const toast = useToast()
+
+// Tempo para desfazer uma exclusão; só depois disso a nota é apagada no servidor
+const UNDO_MS = 6000
+
+interface PendingDelete {
+  note: any
+  timer: ReturnType<typeof setTimeout>
+}
+
+// shallowRef: a comparação por identidade (pendingDelete.value === pending) precisa do objeto original, não de um proxy
+const pendingDelete = shallowRef<PendingDelete | null>(null)
+let hasLoaded = false
 
 // COMPUTED
 const activeFilter = computed(() => {
@@ -210,15 +234,19 @@ const clearSearch = () => {
   searchQuery.value = ''
 }
 
+// O "Carregando..." aparece só na primeira carga; depois a lista continua na tela enquanto atualiza
 const loadNotes = async () => {
   try {
-    isLoading.value = true
-    notes.value = await api.getNotes(selectedFolder.value ?? undefined, selectedTag.value ?? undefined)
+    isLoading.value = !hasLoaded
+    const loaded = await api.getNotes(selectedFolder.value ?? undefined, selectedTag.value ?? undefined)
+    // Uma nota excluída que ainda pode ser desfeita continua no servidor, mas não volta para a tela
+    notes.value = loaded.filter((n: any) => n.id !== pendingDelete.value?.note.id)
   } catch (error) {
     console.error('Erro ao buscar notas:', error)
     notes.value = []
     notifyError(error, 'Erro ao carregar as notas')
   } finally {
+    hasLoaded = true
     isLoading.value = false
   }
 }
@@ -272,68 +300,114 @@ const handleEditNote = (note: any) => {
   isModalOpen.value = true
 }
 
+// Apaga no servidor e atualiza as listas; se falhar, a nota volta para a tela
+const commitDelete = async (pending: PendingDelete) => {
+  clearTimeout(pending.timer)
+  if (pendingDelete.value === pending) pendingDelete.value = null
+
+  try {
+    await api.deleteNote(pending.note.id)
+  } catch (error: any) {
+    console.error('Erro ao excluir nota:', error)
+    notifyError(error, 'Erro ao excluir nota')
+  }
+  await refreshAll()
+}
+
 const handleDeleteNote = async (id: number) => {
-  if (confirm('Tem certeza que deseja excluir esta nota?')) {
-    try {
-      await api.deleteNote(id)
-      toast.add({
-        severity: 'success',
-        summary: 'Excluído!',
-        detail: 'Nota excluída com sucesso!',
-        life: 3000
-      })
-      await refreshAll()
-    } catch (error: any) {
-      console.error('Erro ao excluir nota:', error)
-      notifyError(error, 'Erro ao excluir nota')
-    }
+  const note = notes.value.find(n => n.id === id)
+  if (!note) return
+
+  // Só há um "Desfazer" por vez: a exclusão anterior passa a valer
+  if (pendingDelete.value) await commitDelete(pendingDelete.value)
+
+  notes.value = notes.value.filter(n => n.id !== id)
+  const pending: PendingDelete = { note, timer: setTimeout(() => commitDelete(pending), UNDO_MS) }
+  pendingDelete.value = pending
+}
+
+const undoDelete = async () => {
+  const pending = pendingDelete.value
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingDelete.value = null
+  await loadNotes()
+}
+
+const deleteFromEditor = (note: { id: number }) => {
+  closeModal()
+  handleDeleteNote(note.id)
+}
+
+// A estrela muda na hora; se a API recusar, volta ao que era
+const handleTogglePin = async (id: number) => {
+  const note = notes.value.find(n => n.id === id)
+  if (!note) return
+
+  const next = !note.isPinned
+  note.isPinned = next
+
+  try {
+    await api.updateNote({ ...note, isPinned: next })
+  } catch (error: any) {
+    console.error('Erro ao atualizar nota:', error)
+    note.isPinned = !next
+    notifyError(error, 'Erro ao atualizar nota')
   }
 }
 
-const handleTogglePin = async (id: number) => {
-  const note = notes.value.find(n => n.id === id)
-  if (note) {
-    try {
-      await api.updateNote({ ...note, isPinned: !note.isPinned })
-      toast.add({
-        severity: 'info',
-        summary: 'Atualizado!',
-        detail: note.isPinned ? 'Removida dos favoritos' : 'Adicionada aos favoritos',
-        life: 3000
-      })
-      await loadNotes()
-    } catch (error: any) {
-      console.error('Erro ao atualizar nota:', error)
-      notifyError(error, 'Erro ao atualizar nota')
-    }
+// A nota nova precisa aparecer: se o filtro, a busca ou a aba escondem ela, eles saem do caminho
+const revealIfHidden = (saved: any) => {
+  let revealed = false
+
+  const hiddenByFilter =
+    (selectedFolder.value && saved.folder !== selectedFolder.value) ||
+    (selectedTag.value && !(saved.tags ?? []).includes(selectedTag.value))
+  if (hiddenByFilter) {
+    selectedFolder.value = null
+    selectedTag.value = null
+    revealed = true
   }
+
+  if (searchQuery.value && filterNotes([saved], searchQuery.value).length === 0) {
+    searchQuery.value = ''
+    revealed = true
+  }
+
+  if (view.value === 'favorites' && !saved.isPinned) {
+    view.value = 'all'
+    revealed = true
+  }
+
+  return revealed
 }
 
 const saveNote = async (noteData: any) => {
+  isSaving.value = true
+
   try {
     if (editingNote.value) {
       await api.updateNote({ ...noteData, id: editingNote.value.id })
-      toast.add({
-        severity: 'success',
-        summary: 'Sucesso!',
-        detail: 'Nota atualizada com sucesso!',
-        life: 3000
-      })
+      toast.add({ severity: 'success', summary: 'Salvo!', detail: 'Nota atualizada.', life: 3000 })
     } else {
-      await api.createNote(noteData)
+      const created = await api.createNote(noteData)
+      const revealed = revealIfHidden(created ?? noteData)
       toast.add({
         severity: 'success',
-        summary: 'Sucesso!',
-        detail: 'Nota criada com sucesso!',
+        summary: 'Nota criada!',
+        detail: revealed ? 'Mostrando todas as notas para você ver a nova.' : undefined,
         life: 3000
       })
     }
 
-    await refreshAll()
     closeModal()
+    await refreshAll()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
     notifyError(error, 'Erro ao salvar nota. Tente novamente.')
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -347,6 +421,15 @@ const closeModal = () => {
 }
 
 onMounted(refreshAll)
+
+// Sair da tela com uma exclusão pendente: o prazo acaba aqui, a nota é apagada agora
+onBeforeUnmount(() => {
+  const pending = pendingDelete.value
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  api.deleteNote(pending.note.id).catch(() => {})
+})
 </script>
 
 <style scoped>
@@ -558,6 +641,50 @@ onMounted(refreshAll)
 
 .empty-action.primary:hover {
   background: #166534;
+}
+
+/* Aviso de exclusão com "Desfazer" */
+.undo-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 10px 10px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.undo-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-btn {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  background: var(--accent-soft);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.undo-btn:hover {
+  background: var(--accent-glow);
 }
 
 /* Grade: 1 coluna no celular, até 4 no desktop largo */

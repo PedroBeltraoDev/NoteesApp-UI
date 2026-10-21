@@ -27,11 +27,16 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
 - ✅ **Busca em tempo real** em título, conteúdo, tags e pasta, sem diferenciar maiúsculas nem acentos (também no celular)
 - ✅ **Filtros** por pasta e tag
 - ✅ **Tema Claro, Escuro ou Sistema** (uma única preferência, salva e aplicada antes de a tela aparecer)
-- ✅ **Pastas reais**: escolha uma pasta existente ou digite um nome novo para criá-la
+- ✅ **Formulário de nota enxuto**: só o título é obrigatório; a pasta é escolhida em botões (com "Nova pasta" no próprio
+  formulário, sem lista flutuante) e as tags são chips com sugestões das que você já usa. Ctrl+Enter salva
+- ✅ **Um só diálogo por nota**: clicar no cartão abre direto a edição (com favoritar e excluir). Se você fechar com texto
+  digitado, o app pergunta antes de descartar
+- ✅ **Criar já no lugar certo**: com um filtro de pasta ou tag ativo, a nota nova nasce nessa pasta/tag; se ela ficar
+  escondida por um filtro, pela busca ou pela aba Favoritas, eles saem do caminho para você vê-la
+- ✅ **Excluir com "Desfazer"**: a nota some na hora e só é apagada de verdade depois de 6 segundos (sem `confirm()` do navegador)
 - ✅ **Menu da conta** (e-mail, Configurações, Sair), disponível em qualquer tamanho de tela
 - ✅ **Acessibilidade**: navegação por teclado, foco visível, leitores de tela, contraste AA e link "Pular para o conteúdo"
 - ✅ **Design Responsivo** (Mobile, Tablet, Desktop)
-- ✅ **Modal de Visualização** completa da nota
 - ✅ **Skeleton Loading** para melhor UX
 - ✅ **Toast Notifications** para feedback
 - ✅ **Conta própria**: cadastro e login com e-mail e senha (JWT com renovação automática)
@@ -307,10 +312,10 @@ Cada push gera um *preview deployment*; o merge na `main` publica em produção.
 
 ## ♿ Acessibilidade e usabilidade
 
-- **Teclado**: tudo é alcançável com Tab; o título da nota abre a leitura; o menu da conta aceita setas, Home/End e Esc.
+- **Teclado**: tudo é alcançável com Tab; o título da nota abre a edição; o menu da conta aceita setas, Home/End e Esc.
 - **Leitores de tela**: botões só com ícone têm `aria-label`; campos têm `<label>` visível; erros de formulário são
-  anunciados (`role="alert"`) e ligados ao campo (`aria-describedby`); o modal de leitura é um `role="dialog"` que
-  prende o foco, fecha com Esc e devolve o foco a quem o abriu.
+  anunciados (`role="alert"`) e ligados ao campo (`aria-describedby`); o diálogo da nota prende o foco, fecha com Esc
+  (perguntando antes de descartar texto digitado) e devolve o foco a quem o abriu. Pastas são botões com `aria-pressed`.
 - **Contraste**: textos e botões respeitam 4,5:1 (WCAG AA) nos dois temas. Os tokens ficam em `styles/variables.css`.
 - **Toque**: alvos de 44 px no celular; busca, menu da conta e filtros funcionam em telas pequenas.
 - **Movimento**: animações são reduzidas para quem ativa "reduzir movimento" no sistema.
@@ -321,6 +326,8 @@ Cada push gera um *preview deployment*; o merge na `main` publica em produção.
 - **Marca**: logo em `public/logo.svg` e `public/favicon.svg` (também como componente `AppLogo`). Verde `#22c55e`/`#15803d`.
 - **Tokens**: todas as cores, raios e medidas do shell estão em `src/styles/variables.css`, nos temas escuro (padrão)
   e claro. Camadas: moldura → barra lateral → fundo → painel → card.
+- **Tema**: as classes `dark-mode`/`light-mode` ficam no `<html>` (veja `composables/useTheme.ts`). O PrimeVue calcula
+  as variáveis dos componentes em `:root`; com a classe no `<body>`, os painéis soltos fora do app (Select, Toast) saíam brancos no tema escuro.
 - **Cores de categoria**: cada pasta tem sempre a mesma cor (borda do cartão e avatar), definida em `utils/noteColor.ts`
   a partir de `--note-green`, `--note-sky`, `--note-amber`, `--note-violet`, `--note-coral` e `--note-teal`. Notas sem pasta usam o verde da marca.
 - **Estrutura**: `AppShell` (barra lateral de ícones 72 px, expansível para 232 px com rótulos) + cabeçalho + painel

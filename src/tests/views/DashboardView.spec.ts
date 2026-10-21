@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import DashboardView from '@/views/DashboardView.vue'
@@ -23,6 +23,9 @@ const notes = [
   { id: 2, title: 'Receita de bolo', content: 'Misture ovos e farinha', createdAt: '2026-10-19T10:00:00Z', tags: [], folder: null, isPinned: true }
 ]
 
+// A tela muda as notas na hora (estrela), então cada teste recebe cópias novas para um não contaminar o outro
+const freshNotes = () => notes.map(n => ({ ...n, tags: [...n.tags] }))
+
 // O shell (barra lateral, cabeçalho, sessão, router) é testado à parte; aqui interessam as props que o Dashboard
 // passa para ele, os eventos que recebe e o conteúdo do painel (slot)
 const AppShellStub = defineComponent({
@@ -34,8 +37,8 @@ const AppShellStub = defineComponent({
 
 const FormStub = defineComponent({
   name: 'NoteFormModal',
-  props: ['isOpen', 'note', 'folders'],
-  emits: ['close', 'saved'],
+  props: ['isOpen', 'note', 'folders', 'tags', 'defaultFolder', 'defaultTag', 'saving'],
+  emits: ['close', 'saved', 'delete'],
   setup: () => () => h('div', { class: 'form-stub' })
 })
 
@@ -49,10 +52,21 @@ const mountDashboard = async () => {
 
 const shell = (wrapper: ReturnType<typeof mount>) => wrapper.findComponent(AppShellStub)
 const titles = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('.note-title').map(t => t.text())
+const form = (wrapper: ReturnType<typeof mount>) => wrapper.findComponent(FormStub)
+
+// Exclui pelo menu ⋮ do cartão na posição `index` da lista
+const deleteFromMenu = async (wrapper: ReturnType<typeof mount>, index = 0) => {
+  const card = wrapper.findAll('.note-card')[index]!
+  await card.find('.kebab-trigger').trigger('click')
+  await card.findAll('[role="menuitem"]').find(i => i.text() === 'Excluir')!.trigger('click')
+  await flushPromises()
+}
+
+const undoBar = (wrapper: ReturnType<typeof mount>) => wrapper.find('.undo-bar')
 
 describe('DashboardView', () => {
   beforeEach(() => {
-    vi.mocked(api.getNotes).mockReset().mockResolvedValue(notes as any)
+    vi.mocked(api.getNotes).mockReset().mockResolvedValue(freshNotes() as any)
     vi.mocked(api.getFolders).mockReset().mockResolvedValue(['Trabalho', 'Pessoal'])
     vi.mocked(api.getTags).mockReset().mockResolvedValue(['importante'])
     vi.mocked(api.createNote).mockReset()
@@ -78,10 +92,11 @@ describe('DashboardView', () => {
     expect(shell(wrapper).props('tags')).toEqual(['importante'])
   })
 
-  it('passes the real folders to the form', async () => {
+  it('passes the real folders and tags to the form', async () => {
     const wrapper = await mountDashboard()
 
-    expect(wrapper.findComponent(FormStub).props('folders')).toEqual(['Trabalho', 'Pessoal'])
+    expect(form(wrapper).props('folders')).toEqual(['Trabalho', 'Pessoal'])
+    expect(form(wrapper).props('tags')).toEqual(['importante'])
   })
 
   // ---------- Abas
@@ -123,7 +138,7 @@ describe('DashboardView', () => {
   })
 
   it('an empty Favoritas tab explains how to favorite and goes back to all notes', async () => {
-    vi.mocked(api.getNotes).mockResolvedValue([notes[0]] as any)
+    vi.mocked(api.getNotes).mockResolvedValue([freshNotes()[0]] as any)
     const wrapper = await mountDashboard()
 
     await wrapper.findAll('[role="tab"]')[1]!.trigger('click')
@@ -225,7 +240,7 @@ describe('DashboardView', () => {
     expect(shell(wrapper).props('selectedFolder')).toBe('Trabalho')
     expect(wrapper.find('.empty-state').text()).toContain('Nada em Pasta: Trabalho')
 
-    vi.mocked(api.getNotes).mockResolvedValue(notes as any)
+    vi.mocked(api.getNotes).mockResolvedValue(freshNotes() as any)
     await wrapper.find('.empty-action').trigger('click')
     await flushPromises()
 
@@ -267,7 +282,7 @@ describe('DashboardView', () => {
     expect(shell(wrapper).props('folders')).toEqual(['Trabalho', 'Pessoal'])
 
     vi.mocked(api.getFolders).mockResolvedValue(['Trabalho', 'Pessoal', 'Viagens'])
-    wrapper.findComponent(FormStub).vm.$emit('saved', {
+    form(wrapper).vm.$emit('saved', {
       title: 'Roteiro', content: 'Passagens e hotel para a viagem', folder: 'Viagens', tags: [], isPinned: false
     })
     await flushPromises()
@@ -277,40 +292,295 @@ describe('DashboardView', () => {
     expect(shell(wrapper).props('folders')).toContain('Viagens')
   })
 
-  it('deleting a note refreshes folders and tags too', async () => {
-    vi.stubGlobal('confirm', () => true)
-    vi.mocked(api.deleteNote).mockResolvedValue(undefined)
-    const wrapper = await mountDashboard()
+  // ---------- Excluir com "Desfazer"
 
-    await wrapper.find('.icon-action.delete').trigger('click')
-    await flushPromises()
+  describe('deleting', () => {
+    afterEach(() => vi.useRealTimers())
 
-    expect(api.deleteNote).toHaveBeenCalledTimes(1)
-    expect(api.getFolders).toHaveBeenCalledTimes(2)
-    expect(api.getTags).toHaveBeenCalledTimes(2)
-    vi.unstubAllGlobals()
+    it('hides the note at once and offers to undo, without calling the API yet', async () => {
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+
+      await deleteFromMenu(wrapper) // 1ª da lista: "Receita de bolo"
+
+      expect(titles(wrapper)).toEqual(['Reunião de planejamento'])
+      expect(undoBar(wrapper).text()).toContain('Receita de bolo')
+      expect(undoBar(wrapper).attributes('role')).toBe('status')
+      expect(api.deleteNote).not.toHaveBeenCalled()
+    })
+
+    it('there is no browser confirm() dialog anymore', async () => {
+      const confirm = vi.fn(() => true)
+      vi.stubGlobal('confirm', confirm)
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+
+      await deleteFromMenu(wrapper)
+
+      expect(confirm).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('after the undo window the note is deleted in the API and folders/tags are refreshed', async () => {
+      vi.mocked(api.deleteNote).mockResolvedValue(undefined)
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+
+      await deleteFromMenu(wrapper)
+      await vi.advanceTimersByTimeAsync(6000)
+
+      expect(api.deleteNote).toHaveBeenCalledExactlyOnceWith(2)
+      expect(api.getFolders).toHaveBeenCalledTimes(2)
+      expect(api.getTags).toHaveBeenCalledTimes(2)
+      expect(undoBar(wrapper).exists()).toBe(false)
+    })
+
+    it('"Desfazer" brings the note back and the API is never called', async () => {
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+      await deleteFromMenu(wrapper)
+
+      await wrapper.find('.undo-btn').trigger('click')
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      expect(titles(wrapper)).toEqual(['Receita de bolo', 'Reunião de planejamento'])
+      expect(undoBar(wrapper).exists()).toBe(false)
+      expect(api.deleteNote).not.toHaveBeenCalled()
+    })
+
+    it('a note waiting to be deleted does not come back when the list reloads', async () => {
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+      await deleteFromMenu(wrapper)
+
+      shell(wrapper).vm.$emit('selectFolder', 'Trabalho') // o servidor ainda devolve as 2 notas
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(titles(wrapper)).toEqual(['Reunião de planejamento'])
+    })
+
+    it('deleting a second note makes the first deletion final', async () => {
+      vi.mocked(api.deleteNote).mockResolvedValue(undefined)
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+
+      await deleteFromMenu(wrapper) // "Receita de bolo"
+      vi.mocked(api.getNotes).mockResolvedValue([freshNotes()[0]] as any) // o servidor já não tem a 1ª
+      await deleteFromMenu(wrapper) // agora "Reunião de planejamento"
+
+      expect(api.deleteNote).toHaveBeenCalledExactlyOnceWith(2)
+      expect(undoBar(wrapper).text()).toContain('Reunião de planejamento')
+    })
+
+    it('if the API refuses, the user is told and the note comes back', async () => {
+      const { ApiError } = await import('@/services/http')
+      vi.mocked(api.deleteNote).mockRejectedValue(new ApiError(500, 'Falha no servidor'))
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+
+      await deleteFromMenu(wrapper)
+      await vi.advanceTimersByTimeAsync(6000)
+
+      expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'Falha no servidor' }))
+      expect(titles(wrapper)).toEqual(['Receita de bolo', 'Reunião de planejamento'])
+    })
+
+    it('leaving the page with a pending deletion deletes right away', async () => {
+      vi.mocked(api.deleteNote).mockResolvedValue(undefined)
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+      await deleteFromMenu(wrapper)
+
+      wrapper.unmount()
+
+      expect(api.deleteNote).toHaveBeenCalledExactlyOnceWith(2)
+    })
+
+    it('deleting from inside the editor closes it and goes through the same undo', async () => {
+      const wrapper = await mountDashboard()
+      vi.useFakeTimers()
+      await wrapper.findAll('.note-card')[1]!.trigger('click') // abre "Reunião de planejamento" no editor
+      expect(form(wrapper).props('isOpen')).toBe(true)
+
+      form(wrapper).vm.$emit('delete', notes[0])
+      await flushPromises()
+
+      expect(form(wrapper).props('isOpen')).toBe(false)
+      expect(titles(wrapper)).toEqual(['Receita de bolo'])
+      expect(undoBar(wrapper).text()).toContain('Reunião de planejamento')
+      expect(api.deleteNote).not.toHaveBeenCalled()
+    })
   })
 
-  it('does not delete when the user cancels the confirmation', async () => {
-    vi.stubGlobal('confirm', () => false)
+  // ---------- Abrir, criar, salvar
+
+  it('clicking a card opens it in the editor (there is no read-only screen)', async () => {
     const wrapper = await mountDashboard()
 
-    await wrapper.find('.icon-action.delete').trigger('click')
-    await flushPromises()
+    await wrapper.findAll('.note-card')[0]!.trigger('click')
 
-    expect(api.deleteNote).not.toHaveBeenCalled()
-    vi.unstubAllGlobals()
+    expect(form(wrapper).props('isOpen')).toBe(true)
+    expect(form(wrapper).props('note')).toMatchObject({ id: 2, title: 'Receita de bolo' })
   })
 
-  it('the star toggles the favorite state through the API', async () => {
+  it('a new note starts in the folder the user is filtering by', async () => {
+    const wrapper = await mountDashboard()
+    expect(form(wrapper).props('defaultFolder')).toBeNull()
+
+    shell(wrapper).vm.$emit('selectFolder', 'Trabalho')
+    await flushPromises()
+
+    expect(form(wrapper).props('defaultFolder')).toBe('Trabalho')
+    expect(form(wrapper).props('defaultTag')).toBeNull()
+
+    shell(wrapper).vm.$emit('selectTag', 'importante')
+    await flushPromises()
+
+    expect(form(wrapper).props('defaultFolder')).toBeNull()
+    expect(form(wrapper).props('defaultTag')).toBe('importante')
+  })
+
+  it('saving closes the form, refreshes the lists and tells the user', async () => {
+    vi.mocked(api.createNote).mockResolvedValue({ id: 9, title: 'Roteiro', folder: 'Viagens', tags: [], isPinned: false } as any)
+    const wrapper = await mountDashboard()
+    await wrapper.find('.btn-add').trigger('click')
+
+    form(wrapper).vm.$emit('saved', { title: 'Roteiro', content: '', folder: 'Viagens', tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(form(wrapper).props('isOpen')).toBe(false)
+    expect(form(wrapper).props('saving')).toBe(false)
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success', summary: 'Nota criada!' }))
+  })
+
+  it('tells the form it is saving while the API answers', async () => {
+    let finish!: (note: any) => void
+    vi.mocked(api.createNote).mockReturnValue(new Promise(resolve => (finish = resolve)))
+    const wrapper = await mountDashboard()
+
+    form(wrapper).vm.$emit('saved', { title: 'Nota', content: '', folder: null, tags: [], isPinned: false })
+    await flushPromises()
+    expect(form(wrapper).props('saving')).toBe(true)
+
+    finish({ id: 9, title: 'Nota', folder: null, tags: [], isPinned: false })
+    await flushPromises()
+    expect(form(wrapper).props('saving')).toBe(false)
+  })
+
+  it('if saving fails the form stays open with what was typed, and the user is told', async () => {
+    const { ApiError } = await import('@/services/http')
+    vi.mocked(api.createNote).mockRejectedValue(new ApiError(400, 'Título é obrigatório'))
+    const wrapper = await mountDashboard()
+    await wrapper.find('.btn-add').trigger('click')
+
+    form(wrapper).vm.$emit('saved', { title: 'x', content: '', folder: null, tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(form(wrapper).props('isOpen')).toBe(true)
+    expect(form(wrapper).props('saving')).toBe(false)
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'Título é obrigatório' }))
+  })
+
+  it('a new note hidden by the active folder filter clears the filter so it can be seen', async () => {
+    vi.mocked(api.createNote).mockResolvedValue({ id: 9, title: 'Roteiro', folder: 'Viagens', tags: [], isPinned: false } as any)
+    const wrapper = await mountDashboard()
+    shell(wrapper).vm.$emit('selectFolder', 'Trabalho')
+    await flushPromises()
+
+    form(wrapper).vm.$emit('saved', { title: 'Roteiro', content: '', folder: 'Viagens', tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(shell(wrapper).props('selectedFolder')).toBeNull()
+    expect(api.getNotes).toHaveBeenLastCalledWith(undefined, undefined)
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: expect.stringContaining('Mostrando todas as notas') }))
+  })
+
+  it('a new note that matches the active filter leaves the filter alone', async () => {
+    vi.mocked(api.createNote).mockResolvedValue({ id: 9, title: 'Reunião 2', folder: 'Trabalho', tags: [], isPinned: false } as any)
+    const wrapper = await mountDashboard()
+    shell(wrapper).vm.$emit('selectFolder', 'Trabalho')
+    await flushPromises()
+
+    form(wrapper).vm.$emit('saved', { title: 'Reunião 2', content: '', folder: 'Trabalho', tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(shell(wrapper).props('selectedFolder')).toBe('Trabalho')
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: undefined }))
+  })
+
+  it('a new note hidden by the search or by the Favoritas tab is revealed too', async () => {
+    vi.mocked(api.createNote).mockResolvedValue({ id: 9, title: 'Roteiro', folder: null, tags: [], isPinned: false } as any)
+    const wrapper = await mountDashboard()
+    shell(wrapper).vm.$emit('search', 'bolo')
+    await wrapper.findAll('[role="tab"]')[1]!.trigger('click')
+
+    form(wrapper).vm.$emit('saved', { title: 'Roteiro', content: '', folder: null, tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(shell(wrapper).props('search')).toBe('')
+    expect(wrapper.findAll('[role="tab"]')[0]!.attributes('aria-selected')).toBe('true')
+  })
+
+  it('editing a note does not touch the filters', async () => {
     vi.mocked(api.updateNote).mockResolvedValue({} as any)
+    const wrapper = await mountDashboard()
+    shell(wrapper).vm.$emit('selectFolder', 'Trabalho')
+    await flushPromises()
+    await wrapper.findAll('.note-card')[0]!.trigger('click')
+
+    form(wrapper).vm.$emit('saved', { title: 'Outro', content: '', folder: 'Viagens', tags: [], isPinned: false })
+    await flushPromises()
+
+    expect(api.updateNote).toHaveBeenCalledWith(expect.objectContaining({ id: 2, title: 'Outro' }))
+    expect(shell(wrapper).props('selectedFolder')).toBe('Trabalho')
+  })
+
+  it('does not blank the list with a spinner after the first load', async () => {
+    const wrapper = await mountDashboard()
+    expect(wrapper.find('.loading').exists()).toBe(false)
+
+    let release!: (value: any) => void
+    vi.mocked(api.getNotes).mockReturnValue(new Promise(resolve => (release = resolve)))
+    shell(wrapper).vm.$emit('selectFolder', 'Trabalho')
+    await flushPromises()
+
+    expect(wrapper.find('.loading').exists()).toBe(false)
+    expect(titles(wrapper)).toHaveLength(2)
+
+    release([notes[0]])
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['Reunião de planejamento'])
+  })
+
+  // ---------- Favoritar
+
+  it('the star changes at once and the API is called with the new value', async () => {
+    let finish!: () => void
+    vi.mocked(api.updateNote).mockReturnValue(new Promise<any>(resolve => (finish = () => resolve({}))))
     const wrapper = await mountDashboard()
 
     // 1ª nota da lista = "Receita de bolo" (favorita)
     await wrapper.find('.icon-action.star').trigger('click')
+
+    expect(wrapper.find('.icon-action.star').attributes('aria-pressed')).toBe('false') // antes de a API responder
+    expect(wrapper.findAll('[role="tab"]')[1]!.text()).toContain('0')
+    expect(api.updateNote).toHaveBeenCalledWith(expect.objectContaining({ id: 2, isPinned: false }))
+
+    finish()
+    await flushPromises()
+    expect(api.getNotes).toHaveBeenCalledTimes(1) // não recarrega a lista inteira
+  })
+
+  it('if the API refuses, the star goes back and the user is told', async () => {
+    const { ApiError } = await import('@/services/http')
+    vi.mocked(api.updateNote).mockRejectedValue(new ApiError(0, 'Não foi possível conectar ao servidor.'))
+    const wrapper = await mountDashboard()
+
+    await wrapper.find('.icon-action.star').trigger('click')
     await flushPromises()
 
-    expect(api.updateNote).toHaveBeenCalledWith(expect.objectContaining({ id: 2, isPinned: false }))
+    expect(wrapper.find('.icon-action.star').attributes('aria-pressed')).toBe('true')
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }))
   })
 
   // ---------- Erros

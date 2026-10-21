@@ -38,7 +38,7 @@ describe('AppShell', () => {
     localStorage.clear()
     resetSession()
     session.set(makeSession())
-    document.body.className = 'dark-mode'
+    document.documentElement.className = 'dark-mode'
     vi.mocked(authService.logout).mockClear()
     window.innerWidth = 1280
   })
