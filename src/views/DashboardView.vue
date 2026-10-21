@@ -85,7 +85,7 @@
     <div id="notes-panel" role="tabpanel" :aria-labelledby="`tab-${view}`">
       <div v-if="isLoading" class="loading" role="status" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
-        <p>Carregando notas...</p>
+        <p>{{ slowLoad ? 'O servidor estava dormindo e está acordando. Isso leva alguns segundos só na primeira vez.' : 'Carregando notas...' }}</p>
       </div>
 
       <!-- Pastas: escolha uma para entrar nela -->
@@ -270,6 +270,9 @@ const toast = useToast()
 const notes = ref<Note[]>([])
 const folders = ref<Folder[]>([])
 const isLoading = ref(true)
+// A API serverless dorme quando fica parada: se a primeira carga demora, explicamos em vez de deixar só um spinner
+const slowLoad = ref(false)
+const SLOW_LOAD_MS = 2500
 const isSaving = ref(false)
 const isModalOpen = ref(false)
 const editingNote = ref<Note | null>(null)
@@ -426,6 +429,8 @@ const notifyError = (error: unknown, fallback: string) => {
 // CARGA
 // O "Carregando..." aparece só na primeira carga; depois a lista continua na tela enquanto atualiza
 const loadNotes = async () => {
+  const slowTimer = hasLoaded ? null : setTimeout(() => (slowLoad.value = true), SLOW_LOAD_MS)
+
   try {
     isLoading.value = !hasLoaded
     const loaded = await api.getNotes()
@@ -436,6 +441,8 @@ const loadNotes = async () => {
     notes.value = []
     notifyError(error, 'Erro ao carregar as notas')
   } finally {
+    if (slowTimer) clearTimeout(slowTimer)
+    slowLoad.value = false
     hasLoaded = true
     isLoading.value = false
   }
@@ -495,7 +502,8 @@ const handleTogglePin = async (id: number) => {
   }
 }
 
-// Apaga no servidor e atualiza as listas; se falhar, a nota volta para a tela
+// Apaga no servidor. A nota já saiu da tela e as contagens vêm das notas carregadas, então não há o que recarregar;
+// só se o servidor recusar a nota volta para a tela
 const commitDelete = async (pending: PendingDelete) => {
   clearTimeout(pending.timer)
   if (pendingDelete.value === pending) pendingDelete.value = null
@@ -505,8 +513,8 @@ const commitDelete = async (pending: PendingDelete) => {
   } catch (error: any) {
     console.error('Erro ao excluir nota:', error)
     notifyError(error, 'Erro ao excluir nota')
+    await loadNotes()
   }
-  await refreshAll()
 }
 
 const handleDeleteNote = async (id: number) => {
@@ -527,7 +535,8 @@ const undoDelete = async () => {
 
   clearTimeout(pending.timer)
   pendingDelete.value = null
-  await loadNotes()
+  // A nota ainda está no servidor (a exclusão só vale depois do prazo): basta devolvê-la à tela
+  notes.value = [...notes.value, pending.note]
 }
 
 const deleteFromEditor = (note: { id: number }) => {
@@ -567,12 +576,17 @@ const saveNote = async (noteData: any) => {
   isSaving.value = true
 
   try {
+    // A resposta da API já traz a nota salva: atualiza a tela com ela em vez de buscar tudo de novo
     if (editingNote.value) {
-      await api.updateNote({ ...noteData, id: editingNote.value.id })
+      const updated = await api.updateNote({ ...noteData, id: editingNote.value.id })
+      if (updated?.id) notes.value = notes.value.map(n => (n.id === updated.id ? updated : n))
+      else await loadNotes()
       toast.add({ severity: 'success', summary: 'Salvo!', detail: 'Nota atualizada.', life: 3000 })
     } else {
       const created = await api.createNote(noteData)
       const revealed = revealIfHidden(created ?? noteData)
+      if (created?.id) notes.value = [...notes.value, created]
+      else await loadNotes()
       toast.add({
         severity: 'success',
         summary: 'Nota criada!',
@@ -581,8 +595,10 @@ const saveNote = async (noteData: any) => {
       })
     }
 
+    // Uma pasta nova (criada junto com a nota) só se conhece pelo servidor
+    if (noteData.folder) await loadFolders()
+
     closeModal()
-    await refreshAll()
   } catch (error: any) {
     console.error('Erro ao salvar nota:', error)
     notifyError(error, 'Erro ao salvar nota. Tente novamente.')
@@ -592,6 +608,9 @@ const saveNote = async (noteData: any) => {
 }
 
 // PASTAS: criar, renomear e excluir (excluir nunca apaga as notas)
+// Mesma ordem da API: por nome, sem diferenciar maiúsculas
+const sortFolders = (list: Folder[]) => [...list].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+
 const folderMenu: KebabItem[] = [
   { key: 'rename', label: 'Renomear', icon: 'pi pi-pencil' },
   { key: 'delete', label: 'Excluir pasta', icon: 'pi pi-trash', danger: true }
@@ -622,15 +641,21 @@ const saveFolder = async (name: string) => {
 
   try {
     if (folderDialog.folder) {
-      await api.renameFolder(folderDialog.folder.id, name)
+      const renamed = await api.renameFolder(folderDialog.folder.id, name)
+      const id = folderDialog.folder.id
+      const newName = renamed?.name ?? name
+      folders.value = sortFolders(folders.value.map(f => (f.id === id ? { ...f, name: newName } : f)))
+      // As notas guardam o nome da pasta para o cartão mostrar
+      notes.value = notes.value.map(n => (n.folderId === id ? { ...n, folder: newName } : n))
       toast.add({ severity: 'success', summary: 'Pasta renomeada!', life: 3000 })
     } else {
-      await api.createFolder(name)
+      const created = await api.createFolder(name)
+      if (created?.id) folders.value = sortFolders([...folders.value, created])
+      else await loadFolders()
       toast.add({ severity: 'success', summary: 'Pasta criada!', life: 3000 })
     }
 
     closeFolderDialog()
-    await refreshAll()
   } catch (error: any) {
     console.error('Erro ao salvar pasta:', error)
 
@@ -686,7 +711,10 @@ const confirmDeleteFolder = async () => {
 
     // Se eu estava dentro dela, volto para a lista de pastas
     if (openFolder.value?.kind === 'folder' && openFolder.value.folder.id === folder.id) setView('folders')
-    await refreshAll()
+
+    // O servidor deixou as notas sem pasta; a tela faz o mesmo sem recarregar
+    folders.value = folders.value.filter(f => f.id !== folder.id)
+    notes.value = notes.value.map(n => (n.folderId === folder.id ? { ...n, folderId: null, folder: null } : n))
   } catch (error: any) {
     console.error('Erro ao excluir pasta:', error)
     notifyError(error, 'Erro ao excluir a pasta')

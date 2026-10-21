@@ -1,4 +1,5 @@
 import { session, type Session } from './session'
+import { markApiCall } from './keepAlive'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://noteesapp-be.onrender.com/api'
 
@@ -44,6 +45,8 @@ async function send(path: string, options: RequestOptions, token: string | null)
   const headers: Record<string, string> = {}
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
+
+  markApiCall()
 
   try {
     return await fetch(buildUrl(path, options.query), {
