@@ -88,25 +88,39 @@
           {{ isRegister ? 'Entrar' : 'Criar conta' }}
         </button>
       </p>
+
+      <div class="demo-box">
+        <p class="demo-or"><span>ou</span></p>
+        <button type="button" class="btn-demo" :disabled="loading" @click="startDemo">
+          <i class="pi pi-play" aria-hidden="true"></i>
+          {{ demoLoading ? 'Criando a demo...' : 'Experimentar com conta demo' }}
+        </button>
+        <p class="demo-hint">Sem cadastro. A conta é temporária e será apagada em 30 minutos.</p>
+      </div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import { authService } from '@/services/authService'
 import { ApiError } from '@/services/http'
 import AppLogo from '@/components/common/AppLogo.vue'
 
 const router = useRouter()
+const route = useRoute()
+const toast = useToast()
 
-const mode = ref<'login' | 'register'>('login')
+// ?modo=cadastro abre direto o cadastro (usado pelos botões "Criar conta real" da conta demo)
+const mode = ref<'login' | 'register'>(route.query.modo === 'cadastro' ? 'register' : 'login')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
+const demoLoading = ref(false)
 const emailInput = ref<HTMLInputElement | null>(null)
 const showPassword = ref(false)
 const fieldErrors = reactive({ email: '', password: '', confirmPassword: '' })
@@ -182,6 +196,38 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+// Conta demo: criada na hora, sem e-mail nem senha; o aviso do prazo aparece no topo do app
+const startDemo = async () => {
+  if (loading.value) return
+
+  loading.value = true
+  demoLoading.value = true
+  clearFeedback()
+
+  try {
+    await authService.demo()
+    toast.add({ severity: 'info', summary: 'Conta demo criada', detail: 'Ela será apagada em 30 minutos.', life: 6000 })
+    await router.push('/')
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 429) error.value = 'Muitas tentativas. Aguarde um minuto e tente novamente.'
+    else error.value = e instanceof ApiError ? e.message : 'Não foi possível criar a conta demo. Tente novamente.'
+  } finally {
+    loading.value = false
+    demoLoading.value = false
+  }
+}
+
+// A tela já pode estar aberta quando o link chega (o aviso de tempo esgotado aparece em cima do login): acompanha a URL
+watch(
+  () => route.query.modo,
+  modo => {
+    mode.value = modo === 'cadastro' ? 'register' : 'login'
+    password.value = ''
+    confirmPassword.value = ''
+    clearFeedback()
+  }
+)
 
 const toggleMode = () => {
   mode.value = isRegister.value ? 'login' : 'register'
@@ -362,6 +408,60 @@ onMounted(() => {
 
 .link-button:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+.demo-box {
+  margin-top: 22px;
+}
+
+.demo-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.demo-or::before,
+.demo-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.btn-demo {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 20px;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  border-radius: 12px;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-demo:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn-demo:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.demo-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 480px) {

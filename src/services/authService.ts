@@ -1,5 +1,6 @@
 import { request } from './http'
 import { session, type Session, type SessionUser } from './session'
+import { dismissDemoExpired } from './demo'
 
 export const authService = {
   async register(email: string, password: string): Promise<SessionUser> {
@@ -9,6 +10,14 @@ export const authService = {
       auth: false
     })
     session.set(data)
+    return data.user
+  },
+
+  // Conta de demonstração: sem e-mail nem senha, vale por um tempo limitado (o servidor impõe o prazo)
+  async demo(): Promise<SessionUser> {
+    const data = await request<Session>('/auth/demo', { method: 'POST', auth: false })
+    session.set(data)
+    dismissDemoExpired()
     return data.user
   },
 
