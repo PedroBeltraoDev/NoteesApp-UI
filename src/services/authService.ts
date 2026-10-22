@@ -47,6 +47,16 @@ export const authService = {
     }
   },
 
+  // Exclui a conta com as notas, pastas e sessões (definitivo). Conta com senha manda a senha atual; a demo, nada.
+  // Senha errada volta como 400 (não 401: um 401 derrubaria a sessão), e a sessão local só acaba se deu certo.
+  async deleteAccount(password?: string): Promise<void> {
+    await request('/auth/delete-account', {
+      method: 'POST',
+      body: password ? { password } : undefined
+    })
+    session.clear()
+  },
+
   async me(): Promise<SessionUser> {
     return request<SessionUser>('/auth/me')
   }

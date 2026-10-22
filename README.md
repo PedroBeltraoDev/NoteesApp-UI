@@ -39,6 +39,9 @@ Aplicação web moderna para gerenciamento de notas com organização por pastas
   pela pasta/tag aberta, pela busca ou pelo botão Favoritas, eles saem do caminho para você vê-la
 - ✅ **Excluir com "Desfazer"**: a nota some na hora e só é apagada de verdade depois de 6 segundos (sem `confirm()` do navegador)
 - ✅ **Menu da conta** (e-mail, Configurações, Sair), disponível em qualquer tamanho de tela
+- ✅ **Excluir a conta**: em Configurações, "Excluir minha conta" apaga para sempre a conta com notas, pastas e tags.
+  Pede a **senha atual** para confirmar (senha errada avisa no próprio diálogo e não derruba a sessão); a conta demo,
+  que não tem senha, só confirma. Depois da exclusão o app volta ao login com um aviso
 - ✅ **Acessibilidade**: navegação por teclado, foco visível, leitores de tela, contraste AA e link "Pular para o conteúdo"
 - ✅ **Design Responsivo** (Mobile, Tablet, Desktop)
 - ✅ **Skeleton Loading** para melhor UX
@@ -106,6 +109,7 @@ src/
 │   │   ├── AppLogo.vue      # logo (placa verde com duas folhas de nota) com ou sem o nome
 │   │   ├── CollectionTile.vue # cartão de uma pasta ou tag: nome, nº de notas e menu ⋮
 │   │   ├── ConfirmDialog.vue  # confirmação de exclusão (o foco começa em "Cancelar")
+│   │   ├── DeleteAccountDialog.vue # confirmação de "Excluir conta" (pede a senha; a demo não)
 │   │   ├── DemoExpiredDialog.vue # "O tempo da demo acabou": nova demo ou conta real
 │   │   └── KebabMenu.vue    # menu ⋮ acessível (setas, Esc, clique fora)
 │   ├── layout/
@@ -125,7 +129,7 @@ src/
 ├── services/
 │   ├── http.ts          # cliente HTTP: Bearer, renovação do token e ApiError
 │   ├── session.ts       # sessão (tokens + usuário) no localStorage, sincronizada entre abas
-│   ├── authService.ts   # cadastro, login, conta demo, logout, me
+│   ├── authService.ts   # cadastro, login, conta demo, logout, excluir conta, me
 │   ├── demo.ts          # estado "o tempo da demo acabou" e prazo da demo
 │   └── api.ts           # notas e pastas (as tags vêm das próprias notas)
 ├── middleware/
