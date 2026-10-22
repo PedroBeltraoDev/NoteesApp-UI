@@ -89,4 +89,49 @@ describe('authService', () => {
     expect(me.email).toBe('pessoa@teste.com')
     expect(authHeader(fetchMock.mock.calls[0]![1])).toBe('Bearer access-1')
   })
+
+  it('deleteAccount sends the password with the access token and clears the session', async () => {
+    session.set(makeSession())
+    const fetchMock = mockFetch(() => apiResponse(200))
+
+    await authService.deleteAccount('senha-segura-123')
+
+    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit]
+    expect(String(url)).toContain('/auth/delete-account')
+    expect(init.method).toBe('POST')
+    expect(authHeader(init)).toBe('Bearer access-1')
+    expect(JSON.parse(init.body as string)).toEqual({ password: 'senha-segura-123' })
+    expect(session.isAuthenticated).toBe(false)
+  })
+
+  it('deleteAccount for a demo (no password) sends no body', async () => {
+    session.set(makeSession({ user: { id: 'demo-1', email: 'demo@demo.noteesapp.invalid', isDemo: true } }))
+    const fetchMock = mockFetch(() => apiResponse(200))
+
+    await authService.deleteAccount()
+
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).body).toBeUndefined()
+    expect(session.isAuthenticated).toBe(false)
+  })
+
+  it('a wrong password (400) keeps the person logged in, with no refresh attempt', async () => {
+    session.set(makeSession())
+    const fetchMock = mockFetch(() => apiResponse(400, { message: 'Senha incorreta', errors: { code: ['invalid_password'] } }))
+
+    const error = await rejection(authService.deleteAccount('errada-123456'))
+
+    expect(error.status).toBe(400)
+    expect(error.errors.code).toEqual(['invalid_password'])
+    expect(session.isAuthenticated).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failure while deleting (server down) keeps the session so the person can try again', async () => {
+    session.set(makeSession())
+    mockFetch(() => apiResponse(500))
+
+    await rejection(authService.deleteAccount('senha-segura-123'))
+
+    expect(session.isAuthenticated).toBe(true)
+  })
 })
